@@ -15,7 +15,10 @@ public class SecurityConfiguration {
             requests ->
                 requests
                     .requestMatchers(
-                        "/identity/health", "/identity/auth/register", "/identity/auth/login")
+                        "/identity/health",
+                        "/identity/auth/register",
+                        "/identity/auth/login",
+                        "/identity/auth/introspect")
                     .permitAll()
                     .anyRequest()
                     .authenticated())

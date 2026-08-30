@@ -1,9 +1,11 @@
 package com.tbm.recruitment.identity.controller;
 
+import com.tbm.recruitment.identity.dto.request.IntrospectRequest;
 import com.tbm.recruitment.identity.dto.request.LoginRequest;
 import com.tbm.recruitment.identity.dto.request.RegisterRequest;
 import com.tbm.recruitment.identity.dto.response.AccountResponse;
 import com.tbm.recruitment.identity.dto.response.ApiResponse;
+import com.tbm.recruitment.identity.dto.response.IntrospectResponse;
 import com.tbm.recruitment.identity.dto.response.LoginResponse;
 import com.tbm.recruitment.identity.exception.ErrorCode;
 import com.tbm.recruitment.identity.service.AuthenticationService;
@@ -40,6 +42,16 @@ public class AuthenticationController {
         .code(ErrorCode.SUCCESS.getCode())
         .message(ErrorCode.SUCCESS.getMessage())
         .result(authenticationService.login(request))
+        .build();
+  }
+
+  @PostMapping("/introspect")
+  public ApiResponse<IntrospectResponse> introspect(@Valid @RequestBody IntrospectRequest request) {
+
+    return ApiResponse.<IntrospectResponse>builder()
+        .code(ErrorCode.SUCCESS.getCode())
+        .message(ErrorCode.SUCCESS.getMessage())
+        .result(authenticationService.introspect(request))
         .build();
   }
 }

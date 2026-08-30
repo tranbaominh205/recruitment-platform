@@ -1,8 +1,10 @@
 package com.tbm.recruitment.identity.service;
 
+import com.tbm.recruitment.identity.dto.request.IntrospectRequest;
 import com.tbm.recruitment.identity.dto.request.LoginRequest;
 import com.tbm.recruitment.identity.dto.request.RegisterRequest;
 import com.tbm.recruitment.identity.dto.response.AccountResponse;
+import com.tbm.recruitment.identity.dto.response.IntrospectResponse;
 import com.tbm.recruitment.identity.dto.response.LoginResponse;
 import com.tbm.recruitment.identity.entity.Account;
 import com.tbm.recruitment.identity.entity.Role;
@@ -79,5 +81,9 @@ public class AuthenticationService {
     String accessToken = jwtService.generateAccessToken(account);
 
     return new LoginResponse(accessToken, "Bearer", 3600);
+  }
+
+  public IntrospectResponse introspect(IntrospectRequest request) {
+    return jwtService.introspect(request.token());
   }
 }
