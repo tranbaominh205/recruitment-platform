@@ -1,4 +1,3 @@
-package com.tbm.recruitment.identity.dto.request;
+package com.tbm.recruitment.identity.dto.response;
 
-public class LoginResponse {
-}
+public record LoginResponse(String accessToken, String tokenType, long expiresIn) {}

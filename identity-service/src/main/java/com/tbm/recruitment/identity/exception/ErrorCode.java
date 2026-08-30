@@ -15,11 +15,12 @@ public enum ErrorCode {
 
   ACCOUNT_NOT_FOUND(1004, "Account not found", HttpStatus.NOT_FOUND),
 
-  INVALID_CREDENTIALS(1005, "Invalid credentials", HttpStatus.UNAUTHORIZED),
-
+  INVALID_CREDENTIALS(1005, "Invalid email or password", HttpStatus.UNAUTHORIZED),
   UNAUTHENTICATED(1006, "Unauthenticated", HttpStatus.UNAUTHORIZED),
 
   UNAUTHORIZED(1007, "Unauthorized", HttpStatus.FORBIDDEN),
+
+  ACCOUNT_DISABLED(1008, "Account is disabled", HttpStatus.FORBIDDEN),
 
   INTERNAL_SERVER_ERROR(9999, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
 
