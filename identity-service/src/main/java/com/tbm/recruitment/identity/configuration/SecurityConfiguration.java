@@ -14,7 +14,7 @@ public class SecurityConfiguration {
         .authorizeHttpRequests(
             requests ->
                 requests
-                    .requestMatchers("/identity/health")
+                    .requestMatchers("/identity/health", "/identity/auth/register")
                     .permitAll()
                     .anyRequest()
                     .authenticated());
