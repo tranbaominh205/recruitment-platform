@@ -1,8 +1,8 @@
 package com.tbm.recruitment.identity.exception;
 
-import java.util.LinkedHashMap;
+import com.tbm.recruitment.identity.dto.response.ApiResponse;
 import java.util.Map;
-import org.springframework.http.HttpStatus;
+import java.util.stream.Collectors;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -12,26 +12,52 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
   @ExceptionHandler(AppException.class)
-  ResponseEntity<Map<String, Object>> handleAppException(AppException exception) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(Map.of("code", "BAD_REQUEST", "message", exception.getMessage()));
+  ResponseEntity<ApiResponse<Void>> handleAppException(AppException exception) {
+
+    ErrorCode errorCode = exception.getErrorCode();
+
+    ApiResponse<Void> response =
+        ApiResponse.<Void>builder()
+            .code(errorCode.getCode())
+            .message(errorCode.getMessage())
+            .build();
+
+    return ResponseEntity.status(errorCode.getStatus()).body(response);
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
-  ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException exception) {
+  ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(
+      MethodArgumentNotValidException exception) {
 
-    Map<String, String> errors = new LinkedHashMap<>();
+    Map<String, String> errors =
+        exception.getBindingResult().getFieldErrors().stream()
+            .collect(
+                Collectors.toMap(
+                    error -> error.getField(),
+                    error -> error.getDefaultMessage(),
+                    (first, second) -> first));
 
-    exception
-        .getBindingResult()
-        .getFieldErrors()
-        .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
+    ApiResponse<Map<String, String>> response =
+        ApiResponse.<Map<String, String>>builder()
+            .code(ErrorCode.INVALID_REQUEST.getCode())
+            .message(ErrorCode.INVALID_REQUEST.getMessage())
+            .result(errors)
+            .build();
 
-    return ResponseEntity.badRequest()
-        .body(
-            Map.of(
-                "code", "VALIDATION_ERROR",
-                "message", "Request validation failed",
-                "errors", errors));
+    return ResponseEntity.badRequest().body(response);
+  }
+
+  @ExceptionHandler(Exception.class)
+  ResponseEntity<ApiResponse<Void>> handleException(Exception exception) {
+
+    ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
+
+    ApiResponse<Void> response =
+        ApiResponse.<Void>builder()
+            .code(errorCode.getCode())
+            .message(errorCode.getMessage())
+            .build();
+
+    return ResponseEntity.status(errorCode.getStatus()).body(response);
   }
 }

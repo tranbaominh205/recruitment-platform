@@ -5,6 +5,7 @@ import com.tbm.recruitment.identity.dto.response.AccountResponse;
 import com.tbm.recruitment.identity.entity.Account;
 import com.tbm.recruitment.identity.entity.Role;
 import com.tbm.recruitment.identity.exception.AppException;
+import com.tbm.recruitment.identity.exception.ErrorCode;
 import com.tbm.recruitment.identity.repository.AccountRepository;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
@@ -25,11 +26,11 @@ public class AuthenticationService {
     String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
 
     if (accountRepository.existsByEmailIgnoreCase(normalizedEmail)) {
-      throw new AppException("Email already exists");
+      throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
     }
 
     if (request.role() == Role.ADMIN) {
-      throw new AppException("ADMIN registration is not allowed");
+      throw new AppException(ErrorCode.ADMIN_REGISTRATION_NOT_ALLOWED);
     }
 
     Account account =
