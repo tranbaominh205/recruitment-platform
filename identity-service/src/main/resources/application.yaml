@@ -22,3 +22,8 @@ spring:
 logging:
   level:
     org.hibernate.SQL: debug
+
+security:
+  jwt:
+    signer-key: ${JWT_SIGNER_KEY}
+    access-token-expiration: 3600
