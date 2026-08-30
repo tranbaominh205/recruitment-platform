@@ -1,0 +1,24 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: identity-service
+
+  datasource:
+    url: ${DBMS_CONNECTION:jdbc:mysql://localhost:3306/identity_db}
+    username: ${DBMS_USERNAME:root}
+    password: ${DBMS_PASSWORD:root123456}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+    properties:
+      hibernate:
+        format_sql: true
+
+logging:
+  level:
+    org.hibernate.SQL: debug
