@@ -1,7 +1,7 @@
 package com.tbm.recruitment.identity.service;
 
 import com.tbm.recruitment.identity.dto.response.AccountResponse;
-import com.tbm.recruitment.identity.entity.Account;
+import com.tbm.recruitment.identity.mapper.AccountMapper;
 import com.tbm.recruitment.identity.repository.AccountRepository;
 import java.util.List;
 import lombok.AccessLevel;
@@ -16,18 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class AccountService {
 
   AccountRepository accountRepository;
+  AccountMapper accountMapper;
 
   @Transactional(readOnly = true)
   public List<AccountResponse> getAccounts() {
-    return accountRepository.findAll().stream().map(this::toResponse).toList();
-  }
-
-  private AccountResponse toResponse(Account account) {
-    return new AccountResponse(
-        account.getId(),
-        account.getEmail(),
-        account.getRole(),
-        account.isEnabled(),
-        account.getCreatedAt());
+    return accountRepository.findAll().stream().map(accountMapper::toAccountResponse).toList();
   }
 }
