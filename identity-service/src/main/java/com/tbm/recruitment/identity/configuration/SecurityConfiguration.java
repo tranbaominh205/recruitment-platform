@@ -24,7 +24,10 @@ public class SecurityConfiguration {
                         "/identity/health",
                         "/identity/auth/register",
                         "/identity/auth/login",
-                        "/identity/auth/introspect")
+                        "/identity/auth/introspect",
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html")
                     .permitAll()
                     .requestMatchers("/identity/admin/**")
                     .hasRole("ADMIN")
