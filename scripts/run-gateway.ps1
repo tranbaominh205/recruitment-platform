@@ -26,4 +26,4 @@ Get-Content $envFile | ForEach-Object {
     }
 }
 
-mvn -pl identity-service spring-boot:run
+mvn -pl api-gateway spring-boot:run
