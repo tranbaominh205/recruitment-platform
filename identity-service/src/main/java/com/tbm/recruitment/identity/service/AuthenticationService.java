@@ -10,6 +10,7 @@ import com.tbm.recruitment.identity.entity.Account;
 import com.tbm.recruitment.identity.entity.Role;
 import com.tbm.recruitment.identity.exception.AppException;
 import com.tbm.recruitment.identity.exception.ErrorCode;
+import com.tbm.recruitment.identity.mapper.AccountMapper;
 import com.tbm.recruitment.identity.repository.AccountRepository;
 import com.tbm.recruitment.identity.security.JwtService;
 import java.util.Locale;
@@ -28,6 +29,7 @@ public class AuthenticationService {
   AccountRepository accountRepository;
   PasswordEncoder passwordEncoder;
   JwtService jwtService;
+  AccountMapper accountMapper;
 
   @Transactional
   public AccountResponse register(RegisterRequest request) {
@@ -42,22 +44,15 @@ public class AuthenticationService {
       throw new AppException(ErrorCode.ADMIN_REGISTRATION_NOT_ALLOWED);
     }
 
-    Account account =
-        Account.builder()
-            .email(normalizedEmail)
-            .passwordHash(passwordEncoder.encode(request.password()))
-            .role(request.role())
-            .enabled(true)
-            .build();
+    Account account = accountMapper.toAccount(request);
+
+    account.setEmail(normalizedEmail);
+    account.setPasswordHash(passwordEncoder.encode(request.password()));
+    account.setEnabled(true);
 
     account = accountRepository.save(account);
 
-    return new AccountResponse(
-        account.getId(),
-        account.getEmail(),
-        account.getRole(),
-        account.isEnabled(),
-        account.getCreatedAt());
+    return accountMapper.toAccountResponse(account);
   }
 
   @Transactional(readOnly = true)
