@@ -18,6 +18,7 @@
     <module>identity-service</module>
     <module>api-gateway</module>
     <module>candidate-service</module>
+    <module>employer-service</module>
   </modules>
 
   <properties>

@@ -26,6 +26,12 @@ spring:
                 - Path=${app.api-prefix}/candidate/**
               filters:
                 - StripPrefix=2
+            - id: employer-service
+              uri: ${EMPLOYER_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=${app.api-prefix}/employer/**
+              filters:
+                - StripPrefix=2
 
 services:
   identity:
