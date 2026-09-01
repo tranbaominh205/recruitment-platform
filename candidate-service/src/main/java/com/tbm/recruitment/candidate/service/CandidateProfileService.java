@@ -1,6 +1,7 @@
 package com.tbm.recruitment.candidate.service;
 
 import com.tbm.recruitment.candidate.dto.request.CreateCandidateProfileRequest;
+import com.tbm.recruitment.candidate.dto.request.UpdateCandidatePreferencesRequest;
 import com.tbm.recruitment.candidate.dto.request.UpdateCandidateProfileRequest;
 import com.tbm.recruitment.candidate.dto.response.CandidateProfileResponse;
 import com.tbm.recruitment.candidate.entity.CandidateProfile;
@@ -87,5 +88,23 @@ public class CandidateProfileService {
     } catch (IllegalArgumentException exception) {
       throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
+  }
+
+  @Transactional
+  public CandidateProfileResponse updateMyPreferences(
+      String accountIdHeader, String accountRole, UpdateCandidatePreferencesRequest request) {
+
+    UUID accountId = requireCandidateAccount(accountIdHeader, accountRole);
+
+    CandidateProfile candidateProfile =
+        candidateProfileRepository
+            .findByAccountId(accountId)
+            .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
+
+    candidateMapper.updateCandidatePreferences(request, candidateProfile);
+
+    CandidateProfile savedCandidateProfile = candidateProfileRepository.save(candidateProfile);
+
+    return candidateMapper.toCandidateProfileResponse(savedCandidateProfile);
   }
 }
