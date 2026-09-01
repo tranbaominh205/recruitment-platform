@@ -10,7 +10,7 @@ Recruitment Platform Capstone
 
 Current phase:
 
-DAY 1 CLOSEOUT / PRE-DAY-2 VERIFICATION
+DAY 1 DONE / DAY 2 READY
 
 ---
 
@@ -679,4 +679,19 @@ Before writing Day 2 implementation code:
 - identify unresolved issues.
 
 Only then proceed.
-````
+
+# MapStruct Issue Status
+
+RESOLVED.
+
+Verified:
+- `mvn clean compile` passes;
+- `AccountMapperImpl` is generated;
+- generated mapper is a Spring component;
+- Identity Service starts successfully;
+- no `AccountMapper` injection error remains.
+
+## DAY 2
+### STEP 2.1
+
+Candidate Service foundation + `CandidateProfile`.
