@@ -2,6 +2,8 @@ package com.tbm.recruitment.candidate.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 import lombok.*;
 
@@ -40,6 +42,38 @@ public class CandidateProfile {
 
   @Column(length = 150)
   private String location;
+
+  @ElementCollection
+  @CollectionTable(
+      name = "candidate_desired_job_titles",
+      joinColumns = @JoinColumn(name = "candidate_id"))
+  @Column(name = "job_title", nullable = false, length = 100)
+  @Builder.Default
+  private Set<String> desiredJobTitles = new LinkedHashSet<>();
+
+  @ElementCollection
+  @CollectionTable(
+      name = "candidate_preferred_locations",
+      joinColumns = @JoinColumn(name = "candidate_id"))
+  @Column(name = "location", nullable = false, length = 100)
+  @Builder.Default
+  private Set<String> preferredLocations = new LinkedHashSet<>();
+
+  @ElementCollection
+  @CollectionTable(
+      name = "candidate_employment_types",
+      joinColumns = @JoinColumn(name = "candidate_id"))
+  @Column(name = "employment_type", nullable = false, length = 50)
+  @Builder.Default
+  private Set<String> employmentTypes = new LinkedHashSet<>();
+
+  @ElementCollection
+  @CollectionTable(
+      name = "candidate_workplace_types",
+      joinColumns = @JoinColumn(name = "candidate_id"))
+  @Column(name = "workplace_type", nullable = false, length = 50)
+  @Builder.Default
+  private Set<String> workplaceTypes = new LinkedHashSet<>();
 
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;

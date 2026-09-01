@@ -1,6 +1,7 @@
 package com.tbm.recruitment.candidate.controller;
 
 import com.tbm.recruitment.candidate.dto.request.CreateCandidateProfileRequest;
+import com.tbm.recruitment.candidate.dto.request.UpdateCandidatePreferencesRequest;
 import com.tbm.recruitment.candidate.dto.request.UpdateCandidateProfileRequest;
 import com.tbm.recruitment.candidate.dto.response.ApiResponse;
 import com.tbm.recruitment.candidate.dto.response.CandidateProfileResponse;
@@ -63,6 +64,22 @@ public class CandidateProfileController {
 
     CandidateProfileResponse result =
         candidateProfileService.updateMyProfile(accountId, accountRole, request);
+
+    return ApiResponse.<CandidateProfileResponse>builder()
+        .code(ErrorCode.SUCCESS.getCode())
+        .message(ErrorCode.SUCCESS.getMessage())
+        .result(result)
+        .build();
+  }
+
+  @PutMapping("/preferences")
+  public ApiResponse<CandidateProfileResponse> updateMyPreferences(
+      @RequestHeader(value = "X-Account-Id", required = false) String accountId,
+      @RequestHeader(value = "X-Account-Role", required = false) String accountRole,
+      @Valid @RequestBody UpdateCandidatePreferencesRequest request) {
+
+    CandidateProfileResponse result =
+        candidateProfileService.updateMyPreferences(accountId, accountRole, request);
 
     return ApiResponse.<CandidateProfileResponse>builder()
         .code(ErrorCode.SUCCESS.getCode())
