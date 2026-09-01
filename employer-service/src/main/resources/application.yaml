@@ -1,0 +1,20 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: employer-service
+
+  datasource:
+    url: ${EMPLOYER_DBMS_CONNECTION:jdbc:mysql://localhost:3306/employer_db}
+    username: ${EMPLOYER_DBMS_USERNAME:root}
+    password: ${EMPLOYER_DBMS_PASSWORD:root123456}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
