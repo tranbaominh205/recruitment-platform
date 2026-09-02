@@ -2,7 +2,7 @@
 
 Last updated:
 
-2026-09-02
+2026-09-03
 
 Project:
 
@@ -10,134 +10,168 @@ Recruitment Platform Capstone
 
 Current phase:
 
-DAY 2 DONE / DAY 3 READY
+DAY 3 DONE / DAY 4 READY
 
 ---
 
 # 1. Critical Rule for the Next Chat
 
-Before generating any Day 3 implementation code:
+Before generating any Day 4 implementation code:
 
 1. Read:
-
-    * `MASTER_PROMPT.md`
-    * `PROJECT_CONTEXT.md`
-    * `ARCHITECTURE.md`
-    * `DEVELOPMENT_GUIDE.md`
-    * `CURRENT_CHECKPOINT.md`
-
+    - `MASTER_PROMPT.md`
+    - `PROJECT_CONTEXT.md`
+    - `ARCHITECTURE.md`
+    - `DEVELOPMENT_GUIDE.md`
+    - `CURRENT_CHECKPOINT.md`
 2. Inspect the actual GitHub `main` branch.
-
 3. Do NOT assume repository state only from this checkpoint.
+4. Source code on `main` is implementation truth.
+5. If this checkpoint differs from actual source, use actual source to determine implementation state and explicitly report the inconsistency.
+6. Do not silently change frozen architecture/domain constraints.
+7. Confirm Day 3 source and quality/regression state before starting Day 4.
 
-4. Source code on `main` is the implementation truth.
+Known Day 3 final implementation merge:
 
-5. If this checkpoint differs from actual source, use actual source and explicitly report the difference.
-
-6. Do not start Day 3 if Day 2 source on `main` is incomplete or does not compile.
-
-Known Day 2 completion merge:
-
-`6d0c63ea024a6570c906583bb212d3873202a319`
-
-This merged:
-
-`feature/job-lifecycle-search`
+`87677f173867c61e0cbc601ca0d9b274b9143040`
 
 Commit message:
 
-`feat(job): add lifecycle and search`
+`feat(recruitment): add application tracking and recruiter reads`
+
+Day 3 implementation history also includes:
+
+- `3028f3f0e18e320e9ec5ae650c1d63317f4fec0b`
+    - Resume Service foundation
+    - MongoDB Resume metadata
+    - MinIO upload
+
+- `0adf2dbb4ca6249006b737ad75e2ec15045d863d`
+    - Resume list/detail
+    - secure Resume download
+    - ownership enforcement
+
+- `1232bd9fd510f77c3a3e62b931dce207c5be2d63`
+    - Recruitment Service foundation
+    - Application submission
+    - exact selected `resumeId`
+
+- `87677f173867c61e0cbc601ca0d9b274b9143040`
+    - Candidate Application tracking
+    - recruiter Application reads
+    - recruiter Job ownership verification
 
 ---
 
 # 2. Current Maven Modules
 
-Current implemented modules:
+Implemented modules:
 
-* `identity-service`
-* `api-gateway`
-* `candidate-service`
-* `employer-service`
-* `job-service`
+- `identity-service`
+- `api-gateway`
+- `candidate-service`
+- `employer-service`
+- `job-service`
+- `resume-service`
+- `recruitment-service`
 
-Modules not implemented yet:
+Not implemented yet:
 
-* `resume-service`
-* `recruitment-service`
-* `notification-service`
-* `matching-service`
-* interview-related service/module if required later by the frozen plan
+- `matching-service`
+- `notification-service`
 
-Do not create future modules before their implementation step begins.
+Do not create additional microservices outside the frozen architecture.
 
 ---
 
 # 3. Locked Technology Baseline
 
-Keep the existing repository versions.
+Keep the versions in the current root `pom.xml`.
 
-Important known baseline:
+Known baseline:
 
-* Java 25
-* Spring Boot 4.0.8
-* Spring Cloud 2025.1.3
-* Spring AI 2.0.1
-* Lombok 1.18.46
-* MapStruct 1.6.3
-* Spotless Maven Plugin 3.10.0
-* MySQL 8.4.11
-* MongoDB 8.0.29
-* Kafka 4.2.1
-* MinIO infrastructure already planned/available
+- Java 25
+- Spring Boot 4.0.8
+- Spring Cloud 2025.1.3
+- Spring AI 2.0.1
+- Lombok 1.18.46
+- MapStruct 1.6.3
+- MinIO Java SDK 9.0.3
+- Spotless Maven Plugin 3.10.0
+- MySQL 8.4.11
+- MongoDB 8.0.29
+- Kafka 4.2.1
+- MinIO
 
-Do not downgrade Java or Spring Boot based on older tutorials.
-
-Always inspect the actual root `pom.xml` before adding dependencies.
+Do not downgrade versions based on older tutorials.
 
 ---
 
 # 4. Current Ports
 
-Current service ports:
+- API Gateway: `8888`
+- Identity Service: `8081`
+- Candidate Service: `8082`
+- Employer Service: `8083`
+- Job Service: `8084`
+- Resume Service: `8085`
+- Recruitment Service: `8086`
 
-* API Gateway: `8888`
-* Identity Service: `8081`
-* Candidate Service: `8082`
-* Employer Service: `8083`
-* Job Service: `8084`
-
-Future service ports must be chosen consistently and must not collide with existing services.
-
-External business API versioning remains at the Gateway:
+External business API:
 
 `/api/v1/**`
 
-Downstream controllers must not duplicate `/api/v1`.
+Downstream services do not duplicate `/api/v1`.
 
 ---
 
-# 5. Current MySQL Schemas
+# 5. Current Persistence Ownership
 
-Implemented schemas:
+## MySQL
 
-* `identity_db`
-* `candidate_db`
-* `employer_db`
-* `job_db`
+Identity Service:
 
-Planned next relational schema:
+`identity_db`
 
-* `recruitment_db`
+Candidate Service:
 
-Each business service owns its own schema.
+`candidate_db`
 
-A service must NOT directly query or manipulate another service's database/schema.
+Employer Service:
 
-Cross-service data must be resolved through supported service APIs or the architecture-approved asynchronous mechanism.
+`employer_db`
+
+Job Service:
+
+`job_db`
+
+Recruitment Service:
+
+`recruitment_db`
+
+## MongoDB
+
+Resume Service:
+
+`resume_db`
+
+## MinIO
+
+Resume Service owns Resume/CV binary storage.
+
+Default bucket:
+
+`resumes`
+
+Important:
+
+No service may directly query/manipulate another service's database/schema.
+
+Cross-service business data must be obtained through supported service APIs or an architecture-approved asynchronous mechanism.
 
 ---
 
-# 6. Authentication and Authorization Model
+# 6. Authentication and Authorization
 
 Authentication boundary:
 
@@ -145,57 +179,50 @@ API Gateway.
 
 Gateway:
 
-* validates/introspects JWT;
-* resolves authenticated identity;
-* overwrites trusted identity headers;
-* forwards:
+- validates/introspects JWT;
+- resolves authenticated account;
+- overwrites trusted identity headers;
+- forwards:
+    - `X-Account-Id`
+    - `X-Account-Email`
+    - `X-Account-Role`
 
-    * `X-Account-Id`
-    * `X-Account-Email`
-    * `X-Account-Role`
+Business authorization/ownership remains inside the owning business service.
 
-Business authorization and ownership remain inside the owning business service.
+Do not trust ownership IDs supplied arbitrarily by the frontend.
 
-Do not trust account/recruiter/candidate ownership IDs supplied arbitrarily by the frontend.
+Normal business API tests use Gateway.
 
-Do not move detailed domain authorization into the Gateway.
-
-Direct calls to downstream service ports are internal/debug calls and do not represent the normal public API flow.
+Direct downstream calls are internal/debug only.
 
 ---
 
 # 7. DAY 1 — COMPLETE
 
-Implemented and verified:
+Implemented:
 
-## Identity Service
+## Identity
 
-* account registration
-* Candidate registration
-* Recruiter registration
-* public ADMIN registration blocked
-* login
-* BCrypt password hashing
-* JWT generation
-* JWT validation/introspection
-* current account endpoint
-* admin account listing
-* role authorization
-* password hash not exposed
-* MapStruct AccountMapper
-* Spring mapper injection verified
-* OpenAPI/Swagger integration
+- Candidate/Recruiter registration
+- public ADMIN registration blocked
+- login
+- BCrypt
+- JWT
+- introspection
+- current account
+- admin account listing
+- role authorization
+- MapStruct
+- password hash not exposed
 
-## API Gateway
+## Gateway
 
-* Identity routing
-* authentication filter
-* Identity introspection
-* trusted identity headers
-* `401` handling
-* public Identity endpoints
-* protected endpoints
-* spoofed trusted headers overwritten
+- Identity routing
+- JWT authentication
+- Identity introspection
+- trusted identity headers
+- public/protected endpoint handling
+- spoofed trusted headers overwritten
 
 Day 1 is closed.
 
@@ -203,438 +230,208 @@ Day 1 is closed.
 
 # 8. DAY 2 — COMPLETE
 
-## STEP 2.1 — Candidate Service + CandidateProfile
+## Candidate Service
 
 Implemented:
 
-* `candidate-service`
-* `candidate_db`
-* CandidateProfile
-* separate Candidate UUID
-* Identity `accountId` reference
-* one profile per Candidate account
-* create own profile
-* get own profile
-* update own profile
-* Candidate-only authorization
-* Gateway Candidate route
-* MapStruct
-* validation
-* MySQL persistence
-
-Stable core CandidateProfile data includes:
-
-* `fullName`
-* `phone`
-* `school`
-* `major`
-* `graduationYear`
-* `location`
+- `CandidateProfile`
+- separate CandidateProfile UUID
+- Identity `accountId` reference
+- create/get/update own profile
+- Candidate-only ownership
+- candidate preferences:
+    - `desiredJobTitles`
+    - `preferredLocations`
+    - `employmentTypes`
+    - `workplaceTypes`
 
 CandidateProfile does NOT contain Resume/CV contents.
 
----
-
-# 9. STEP 2.2 — Candidate Job Preferences
+## Employer Service
 
 Implemented:
 
-* `desiredJobTitles`
-* `preferredLocations`
-* `employmentTypes`
-* `workplaceTypes`
-* preference update endpoint
-* preference persistence using collections
-* Candidate ownership
-* GET CandidateProfile returns preferences
-* core profile update does not erase preferences
+- `Company`
+- recruiter ownership
+- create/get/update own Company
+- recruiter cannot manage another recruiter's Company
 
-Merge known as part of Day 2 history:
-
-`9118aaa1b5b21695ac9ed2b7c79d5e37a707b494`
-
----
-
-# 10. STEP 2.3 — Employer Service + Company
+## Job Service
 
 Implemented:
 
-* `employer-service`
-* `employer_db`
-* Company entity/domain
-* separate Company UUID
-* authenticated Recruiter ownership
-* create own Company
-* get own Company
-* update own Company
-* Candidate forbidden from company management
-* Gateway Employer route
-* MapStruct
-* MySQL persistence
+- Job creation
+- initial `DRAFT`
+- update DRAFT
+- `DRAFT -> PUBLISHED`
+- `PUBLISHED -> CLOSED`
+- recruiter own-job list
+- public PUBLISHED-job search
+- filtering
+- pagination
+- ownership through Company
+- Job Service does not directly query Employer DB
 
-Company ownership is derived from authenticated identity.
+Gateway public search rule:
 
-Client does not choose arbitrary `ownerAccountId`.
+Only method-aware:
 
-Known merge:
+`GET /job/search`
 
-`463959fcf208d4dc0fbea0abeab81a9281832804`
+is public.
 
----
+Day 2 is closed.
 
-# 11. STEP 2.4 — Job Service + Job Creation
-
-Implemented:
-
-* `job-service`
-* `job_db`
-* Job entity
-* Job UUID
-* `companyId`
-* `createdByAccountId`
-* Employer Service REST integration
-* recruiter company resolution
-* create Job
-* newly created Job starts as `DRAFT`
-* salary validation
-* Candidate cannot create Job
-* recruiter without Company cannot create Job
-* Gateway Job route
-* MapStruct
-* MySQL persistence
-
-Job Service does NOT query `employer_db` directly.
-
-Known merge:
-
-`6768a8d6e0c11251ffc1f4e634c6f355f30933d2`
-
----
-
-# 12. STEP 2.5 — Job Lifecycle + List + Public Search
-
-Implemented and merged:
+Known Day 2 completion merge:
 
 `6d0c63ea024a6570c906583bb212d3873202a319`
 
-Implemented lifecycle:
+---
 
-* `DRAFT`
-* `PUBLISHED`
-* `CLOSED`
+# 9. DAY 3 — COMPLETE
 
-Allowed core transitions:
+Day 3 goal:
 
-* `DRAFT -> PUBLISHED`
-* `PUBLISHED -> CLOSED`
+Candidate can apply to a Job using one explicitly selected Resume.
 
-Current behavior includes:
+Implemented successfully at source level:
 
-* update DRAFT Job
-* prevent modification after publish/close
-* publish Job
-* prevent invalid lifecycle transitions
-* close published Job
-* recruiter list own Company Jobs
-* company ownership checks
-* public Job search
-* search without JWT
-* only `PUBLISHED` Jobs appear in public search
-* keyword filter
-* location filter
-* employment type filter
-* workplace type filter
-* pagination
-* pagination validation
+- Resume Service
+- MongoDB Resume metadata
+- MinIO binary storage
+- multiple Resume uploads
+- unique Resume UUID per upload
+- unique immutable storage key
+- Resume list
+- Resume metadata detail
+- secure Resume download
+- Resume Candidate ownership
+- Recruitment Service
+- Application persistence
+- selected `resumeId`
+- initial `SUBMITTED` status
+- Candidate Application tracking
+- recruiter Application listing
+- Candidate/recruiter Application detail authorization
 
-API Gateway has method-aware public handling for:
-
-`GET /api/v1/job/search`
-
-Recruiter management APIs remain protected.
-
-No Kafka Job events were introduced on Day 2.
-
-No Elasticsearch was introduced.
-
-P0 search currently uses MySQL.
+Day 3 contains no Kafka implementation.
 
 ---
 
-# 13. Day 2 Architecture State
+# 10. Resume Domain — Current State
 
-Core synchronous business flow currently available:
+Resume belongs to Resume Service.
 
-Candidate:
+MongoDB metadata contains fields such as:
 
-`register -> login -> CandidateProfile -> preferences`
+- `id`
+- `ownerAccountId`
+- `displayName`
+- `originalFileName`
+- `contentType`
+- `size`
+- `storageKey`
+- `status`
+- `createdAt`
 
-Recruiter:
+Binary is stored in MinIO, not MongoDB.
 
-`register -> login -> Company -> create Job -> publish Job -> close Job`
+Each upload creates:
 
-Public/Candidate:
+- new Resume UUID
+- new storage key
+- new immutable binary object
 
-`search PUBLISHED Jobs`
+Uploading a newer Resume must NOT overwrite a Resume referenced by an older Application.
 
-Current cross-service synchronous relationship:
+Current Candidate Resume APIs:
 
-`Job Service -> Employer Service`
+`POST /api/v1/resume`
 
-for recruiter Company resolution.
+`GET /api/v1/resume`
 
-No service directly accesses another service's database.
+`GET /api/v1/resume/{resumeId}`
 
----
+`GET /api/v1/resume/{resumeId}/download`
 
-# 14. Day 2 Completion Gate
+These are Candidate-owned APIs.
 
-User confirmed STEP 2.5 completed before creating this checkpoint.
-
-Before Day 3 implementation, the next chat must still inspect actual GitHub `main`.
-
-At minimum verify:
-
-* commit `6d0c63ea024a6570c906583bb212d3873202a319` is present on `main`;
-* root Maven contains all current modules;
-* Candidate Service source exists;
-* Employer Service source exists;
-* Job Service source exists;
-* Job lifecycle source exists;
-* public Job search source exists;
-* Gateway current routing/security configuration matches the source;
-* no unresolved merge conflict is present.
-
-Do not falsely claim build/test/runtime results unless supported by repository state or user-provided results.
+Recruiters must NOT receive unrestricted Resume browsing access.
 
 ---
 
-# 15. DAY 3 Goal
-
-DAY 3 — Resume + Application.
-
-Frozen Day 3 scope from `PROJECT_CONTEXT.md`:
-
-## Resume
-
-* Resume Service
-* MinIO storage
-* resume metadata
-* upload
-* download
-
-## Recruitment
-
-* Recruitment Service
-* application submission
-* persist selected `resumeId`
-* initial recruitment workflow
-
-Day 3 business goal:
-
-Candidate can apply to a Job using a specific Resume.
-
----
-
-# 16. Important Resume Domain Rules
-
-Do not mix Resume contents into CandidateProfile.
-
-CandidateProfile contains stable candidate information/preferences.
-
-Resume is a separate domain.
-
-A Candidate may have multiple Resumes.
-
-An Application must preserve the exact Resume selected at application time using `resumeId`.
-
-Do not silently replace this with "latest resume".
-
-Resume binary/file storage belongs in MinIO.
-
-Resume metadata/domain persistence must follow the frozen architecture and actual repository conventions.
-
-Before implementing, inspect `ARCHITECTURE.md` for the approved Resume database/storage ownership.
-
----
-
-# 17. Important Recruitment/Application Rules
+# 11. Application Domain — Current State
 
 Application belongs to Recruitment Service.
 
-Do not put Application directly inside Job Service.
+Application persists:
 
-Do not put Application directly inside Candidate Service.
+- `id`
+- `candidateId`
+- `jobId`
+- `resumeId`
+- `status`
+- `submittedAt`
 
-An Application must reference the relevant IDs according to frozen architecture.
+Important:
 
-At minimum Day 3 must preserve:
+`candidateId` is CandidateProfile domain UUID.
 
-* candidate identity/domain reference;
-* job reference;
-* selected `resumeId`;
-* initial workflow/status.
+It is NOT the Identity account UUID.
 
-Recruiter/Application authorization belongs in Recruitment Service.
+Critical invariant:
 
-Do not add Kafka workflow before the Day 4 step unless the actual frozen architecture or updated plan explicitly requires it.
+`resumeId` is the exact Resume selected during submission.
 
----
+An old Application must NEVER automatically switch to a newer Resume.
 
-# 18. Day 3 Implementation Strategy
+Application `resumeId` is immutable after creation.
 
-Do not implement all Day 3 features at once.
+Initial persisted status:
 
-Likely sequence must be determined after inspecting actual `main`.
+`SUBMITTED`
 
-Expected direction:
+Locked complete status set:
 
-## STEP 3.1
+- `SUBMITTED`
+- `SCREENING`
+- `INTERVIEW`
+- `OFFER`
+- `HIRED`
+- `REJECTED`
+- `WITHDRAWN`
 
-Resume Service foundation + Resume metadata + MinIO upload.
-
-## STEP 3.2
-
-Resume list/get/download/ownership refinement as required.
-
-## STEP 3.3
-
-Recruitment Service foundation + Application submission using explicit `resumeId`.
-
-## STEP 3.4
-
-Initial Application read/workflow foundation as required to complete Day 3 P0.
-
-The exact split must be based on:
-
-* actual source;
-* frozen architecture;
-* P0 priority;
-* remaining time.
-
-Only ONE implementation STEP at a time.
-
-After every STEP:
-
-STOP and wait for user implementation/testing.
+Do not add persisted `NEW`.
 
 ---
 
-# 19. Permanent Instruction for Tests
+# 12. Current Application APIs
 
-The user tests APIs primarily with Postman.
+Candidate submission:
 
-For every Postman test case:
+`POST /api/v1/recruitment/application`
 
-1. show HTTP method;
-2. show full Gateway URL or Postman variable URL;
-3. show required Authorization header;
-4. show request body if applicable;
-5. immediately below that same test, show its Expected Result.
+Body:
 
-Do NOT put all expected responses into a separate distant section that forces the user to cross-reference tests.
-
-Public endpoints must explicitly say when Authorization must be omitted.
-
-Business API tests should normally use the Gateway URL, not direct internal service ports.
-
----
-
-# 20. Permanent Instruction for Code Output
-
-When a STEP requires creating or modifying a source file:
-
-* provide the actual code required;
-* provide complete code when replacement of the file is required;
-* do not say only:
-
-    * "copy the Candidate version";
-    * "copy this file from Employer Service";
-    * "same as the previous service";
-    * "reuse the existing handler and change the package";
-* do not force the user to reconstruct required code from earlier chat messages.
-
-Existing reusable source should still be inspected to preserve conventions, but the answer must show the concrete implementation needed for the current STEP.
-
-Do not dump unrelated services.
-
-Only show files required by the current STEP.
-
----
-
-# 21. Quality Gate
-
-Before a STEP is DONE, run as applicable:
-
-```bash
-mvn spotless:apply
-mvn spotless:check
-mvn clean test
-mvn clean compile
+```json
+{
+  "jobId": "UUID",
+  "resumeId": "UUID"
+}
 ```
-
-Also verify:
-
-* service startup;
-* Gateway routing where applicable;
-* Postman success cases;
-* Postman failure/security cases;
-* persistence;
-* mapper generation where MapStruct is used;
-* no committed `.env`;
-* no committed `target/`;
-* no real secrets.
+Client must NOT send arbitrary `candidateId`. Submission validation: 1. authenticated role must be Candidate; 2. `CandidateProfile` is resolved through Candidate Service; 3. exact Resume is verified through Resume Service using authenticated ownership; 4. Job is verified through Job Service; 5. only `PUBLISHED` Job can receive a new Application; 6. Recruitment Service persists exact CandidateProfile ID, Job ID, and selected Resume ID; 7. initial status is `SUBMITTED`. Candidate tracking: ```http GET /api/v1/recruitment/application/mine ``` Candidate/recruiter authorized detail: ```http GET /api/v1/recruitment/application/{applicationId} ``` Recruiter own-Job applications: ```http GET /api/v1/recruitment/application/job/{jobId} ``` Recruiter must own the related Job. Recruitment Service verifies ownership through Job Service. Recruitment Service does NOT query `job_db`. --- # 13. Job APIs Added for Recruitment Integration Published Job validation: ```http GET /job/{jobId} ``` Only returns a Job when status is `PUBLISHED`. Used by Recruitment Service before accepting an Application. Recruiter Job ownership validation: ```http GET /job/{jobId}/ownership ``` Requires authenticated recruiter ownership. This ownership check is NOT restricted to `PUBLISHED`. A recruiter may still inspect applications belonging to an owned Job after it becomes `CLOSED`. --- # 14. Gateway Routes Current external routes include: - `/api/v1/identity/**`; - `/api/v1/candidate/**`; - `/api/v1/employer/**`; - `/api/v1/job/**`; - `/api/v1/resume/**`; - `/api/v1/recruitment/**`. Resume and Recruitment routes are protected by Gateway authentication by default. Do not make them public. --- # 15. Error Code Ranges Maintain service-specific ranges: - Identity: `1xxx`; - Candidate: `2xxx`; - Employer: `3xxx`; - Job: `4xxx`; - Resume: `5xxx`; - Recruitment: `6xxx`; - Matching: `7xxx`; - Notification: `8xxx`; - Gateway: `9xxx`. Do not casually change existing codes. --- # 16. Important Frozen Domain Rules ## Candidate != Resume `CandidateProfile` contains stable profile/preferences. Resume contains Resume-specific data. Candidate may own multiple Resumes. ## Application Freezes Selected Resume Application must persist exact `resumeId`. Do NOT implement: ```text latest resume ``` replacement behavior. ## Service Database Ownership No direct cross-schema queries. ## Authentication Gateway authenticates. Owning business service authorizes. ## Kafka Do not add Kafka events without an actual asynchronous use case. ## Search No Elasticsearch during P0. ## Matching Recruiter-facing matching is: ```text Resume <-> Job ``` not: ```text CandidateProfile <-> Job ``` ## AI AI is decision support only. AI must never automatically reject/hire a Candidate. --- # 17. Quality/Test Rule The user primarily tests APIs with Postman. For each API test: 1. HTTP method + Gateway URL; 2. headers; 3. body when needed; 4. Expected Result immediately below that request. Normal business API: use Gateway. Do not claim runtime/build/test pass unless supported by actual evidence. Before completing a step run as applicable: ```bash mvn spotless:apply mvn spotless:check mvn clean test mvn clean compile ``` Also verify: - service startup; - Gateway routing; - success cases; - failure/security cases; - persistence; - MapStruct generation where applicable; - no `.env`; - no `target/`; - no secrets committed. --- # 18. DAY 4 — Frozen Scope According to `PROJECT_CONTEXT.md`: ```text DAY 4 — Kafka + ATS Workflow + Notification ``` Planned scope: - Kafka integration; - recruitment events; - recruitment status transitions; - interview scheduling; - Notification Service; - Mongo notification persistence. Goal: Asynchronous recruitment workflow functions end-to-end. Do NOT automatically implement all these items together. Day 4 must still be divided into small implementation STEPs. Do not invent the Day 4 STEP split until current `main` and all mandatory project files have been inspected. --- # 19. Day 4 Important Constraints Recruitment statuses remain: - `SUBMITTED`; - `SCREENING`; - `INTERVIEW`; - `OFFER`; - `HIRED`; - `REJECTED`; - `WITHDRAWN`. Minimal transitions are defined in `PROJECT_CONTEXT.md`. Do not allow arbitrary status jumps. Candidate withdraw behavior must respect the frozen transition plan. Recruiter must only mutate Applications belonging to Jobs they own/manage. Kafka should be introduced only where an asynchronous use case now exists. Notification Service is one of the frozen architecture services. Do not create another workflow/event microservice. No Matching Service implementation until the appropriate Day 5 step. --- # 20. Git Workflow Normal workflow: ```text main -> short-lived feature branch -> implementation -> Spotless -> compile/test -> Postman/runtime tests -> commit -> push -> pull request -> merge to main ``` Merged branches are historical/read-only. Do not continue new work on merged Day 3 branches. --- # 21. Next Action Before writing Day 4 code: 1. inspect actual GitHub `main`; 2. read all five mandatory project files; 3. verify final Day 3 merge/checkpoint; 4. inspect current Kafka infrastructure/config; 5. inspect current Recruitment Service/Application status model; 6. inspect Gateway/routes; 7. inspect Notification/Matching modules to confirm they do not exist yet; 8. identify unresolved issues; 9. determine the smallest correct Day 4 STEP. Do NOT immediately dump Kafka + status workflow + Notification Service together. Produce only ONE Day 4 implementation STEP. After that STEP: STOP and wait for implementation/testing.
+Root source at the verified final Day 3 commit contains **7 modules**, including both `resume-service` and `recruitment-service`; Gateway at that same commit contains Resume and Recruitment routes. :contentReference[oaicite:8]{index=8}
 
 ---
 
-# 22. Git Workflow
 
-Normal workflow:
+# 6. Commit Day 3 closeout
 
-`main`
--> new short-lived feature branch
--> implementation
--> Spotless
--> compile/test
--> Postman/runtime tests
--> commit
--> push
--> pull request
--> merge to `main`
+Chỉ làm sau khi regression + quality gate pass.
 
-Do not continue new work on already merged feature branches.
+Từ `main`:
 
-At the end of Day 3:
-
-* regression test completed Day 3 flow;
-* merge completed work into `main`;
-* update this checkpoint;
-* commit checkpoint.
-
----
-
-# 23. Next Action
-
-The next chat must NOT immediately invent STEP 3.1 code.
-
-First:
-
-1. inspect actual GitHub `main`;
-2. read all five mandatory project files;
-3. inspect current modules and relevant source;
-4. verify Day 2 state against commit `6d0c63ea024a6570c906583bb212d3873202a319`;
-5. inspect MinIO configuration already present;
-6. inspect architecture constraints for Resume Service and Recruitment Service;
-7. identify any inconsistency/blocker.
-
-If Day 2 is clean:
-
-NEXT:
-
-`DAY 3 — STEP 3.1 — Resume Service foundation + Resume metadata + MinIO upload`
-
-Then follow the mandatory 16-section STEP format from `MASTER_PROMPT.md`.
-
-After STEP 3.1:
-
-STOP.
+```powershell
+git checkout main
+git pull
+git checkout -b docs/day3-checkpoint
