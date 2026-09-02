@@ -2,7 +2,7 @@
 
 Last updated:
 
-2026-08-31
+2026-09-02
 
 Project:
 
@@ -10,688 +10,631 @@ Recruitment Platform Capstone
 
 Current phase:
 
-DAY 1 DONE / DAY 2 READY
+DAY 2 DONE / DAY 3 READY
 
 ---
 
-# 1. Important Rule for Next Chat
+# 1. Critical Rule for the Next Chat
 
-Before starting Day 2, inspect the actual GitHub `main` branch.
+Before generating any Day 3 implementation code:
 
-Do NOT assume Day 1 is complete only from this checkpoint.
+1. Read:
 
-Verify all Day 1 completion criteria first.
+    * `MASTER_PROMPT.md`
+    * `PROJECT_CONTEXT.md`
+    * `ARCHITECTURE.md`
+    * `DEVELOPMENT_GUIDE.md`
+    * `CURRENT_CHECKPOINT.md`
 
-If any Day 1 issue remains, fix it before producing Day 2 Step 2.1.
+2. Inspect the actual GitHub `main` branch.
 
----
+3. Do NOT assume repository state only from this checkpoint.
 
-# 2. Completed Foundation Work
+4. Source code on `main` is the implementation truth.
 
-The following work was implemented during Day 1.
+5. If this checkpoint differs from actual source, use actual source and explicitly report the difference.
 
-## Root Maven Project
+6. Do not start Day 3 if Day 2 source on `main` is incomplete or does not compile.
 
-Multi-module Maven project.
+Known Day 2 completion merge:
 
-Root group/package convention:
+`6d0c63ea024a6570c906583bb212d3873202a319`
 
-`com.tbm.recruitment`
+This merged:
 
-Current relevant modules include:
+`feature/job-lifecycle-search`
 
-- identity-service
-- api-gateway
+Commit message:
 
-Future modules will be added only when their implementation begins.
-
----
-
-# 3. Technology Baseline
-
-Locked:
-
-- Java 25 LTS
-- Microsoft OpenJDK 25.0.4.1 locally
-- Spring Boot 4.0.8
-- Spring Cloud 2025.1.3
-- Spring AI 2.0.1
-- Maven >= 3.9.5
-- Lombok 1.18.46
-- MapStruct 1.6.3
-- Spotless Maven Plugin 3.10.0
-
-Do not downgrade to Java 21 or Boot 3 based on old tutorials.
+`feat(job): add lifecycle and search`
 
 ---
 
-# 4. Infrastructure
+# 2. Current Maven Modules
 
-Docker infrastructure established:
+Current implemented modules:
 
-## MySQL
+* `identity-service`
+* `api-gateway`
+* `candidate-service`
+* `employer-service`
+* `job-service`
 
-Image:
+Modules not implemented yet:
 
-`mysql:8.4.11`
+* `resume-service`
+* `recruitment-service`
+* `notification-service`
+* `matching-service`
+* interview-related service/module if required later by the frozen plan
 
-Container:
-
-`recruitment-mysql`
-
-Port:
-
-3306
-
-Current schema:
-
-`identity_db`
-
-Future schemas planned:
-
-- candidate_db
-- employer_db
-- job_db
-- recruitment_db
-
-## MongoDB
-
-Image:
-
-`mongo:8.0.29`
-
-Container:
-
-`recruitment-mongodb`
-
-Port:
-
-27017
-
-Future DBs:
-
-- resume_db
-- matching_db
-- notification_db
-
-## Kafka
-
-Image:
-
-`apache/kafka:4.2.1`
-
-Container:
-
-`recruitment-kafka`
-
-KRaft single node.
-
-External:
-
-9094
-
-Internal:
-
-9092
-
-No ZooKeeper.
-
-## MinIO
-
-Container:
-
-`recruitment-minio`
-
-Ports:
-
-9000 / 9001
-
-Used later by Resume Service.
-
-## Redis
-
-Not running.
-
-Redis is P1 and must not be introduced until code has a real use for it.
+Do not create future modules before their implementation step begins.
 
 ---
 
-# 5. Local Environment Convention
+# 3. Locked Technology Baseline
 
-Root:
+Keep the existing repository versions.
 
-`.env`
+Important known baseline:
 
-contains real local secrets.
+* Java 25
+* Spring Boot 4.0.8
+* Spring Cloud 2025.1.3
+* Spring AI 2.0.1
+* Lombok 1.18.46
+* MapStruct 1.6.3
+* Spotless Maven Plugin 3.10.0
+* MySQL 8.4.11
+* MongoDB 8.0.29
+* Kafka 4.2.1
+* MinIO infrastructure already planned/available
 
-Never commit it.
+Do not downgrade Java or Spring Boot based on older tutorials.
 
-Committed:
-
-`.env.example`
-
-Root run scripts include:
-
-- `scripts/run-identity.ps1`
-- `scripts/run-gateway.ps1`
-
-Scripts load environment variables from root `.env`.
-
----
-
-# 6. Identity Service
-
-Port:
-
-8081
-
-Database:
-
-`identity_db`
-
-Implemented concepts:
-
-- Identity service bootstrap
-- health endpoint
-- Account entity
-- UUID account IDs
-- unique email
-- BCrypt password hashing
-- roles
-- account enabled flag
-- registration
-- login
-- JWT generation
-- JWT validation/resource server
-- token introspection
-- current account endpoint
-- role authorization
-- admin account listing
-- API response convention
-- error handling
-- OpenAPI/Swagger work
-- MapStruct standardization work
-
-Roles:
-
-- CANDIDATE
-- RECRUITER
-- ADMIN
-
-Public registration:
-
-CANDIDATE
-RECRUITER
-
-Public ADMIN registration is forbidden.
+Always inspect the actual root `pom.xml` before adding dependencies.
 
 ---
 
-# 7. JWT Contract
+# 4. Current Ports
 
-JWT:
+Current service ports:
 
-HS256
+* API Gateway: `8888`
+* Identity Service: `8081`
+* Candidate Service: `8082`
+* Employer Service: `8083`
+* Job Service: `8084`
 
-Claims:
+Future service ports must be chosen consistently and must not collide with existing services.
 
-- `sub` = accountId
-- `email`
-- `role`
-- `iat`
-- `exp`
+External business API versioning remains at the Gateway:
 
-Issuer:
+`/api/v1/**`
 
-`identity-service`
-
-Expiration:
-
-3600 seconds
-
-JWT signing key:
-
-environment variable `JWT_SIGNER_KEY`
-
-Do not add fallback secrets.
-
-Do not log JWT values.
+Downstream controllers must not duplicate `/api/v1`.
 
 ---
 
-# 8. Identity API Concepts
+# 5. Current MySQL Schemas
 
-Known/current intended endpoints:
+Implemented schemas:
 
-Health:
+* `identity_db`
+* `candidate_db`
+* `employer_db`
+* `job_db`
 
-`GET /identity/health`
+Planned next relational schema:
 
-Register:
+* `recruitment_db`
 
-`POST /identity/auth/register`
+Each business service owns its own schema.
 
-Login:
+A service must NOT directly query or manipulate another service's database/schema.
 
-`POST /identity/auth/login`
-
-Introspection:
-
-`POST /identity/auth/introspect`
-
-Current user:
-
-`GET /identity/me`
-
-Admin accounts:
-
-`GET /identity/admin/accounts`
-
-The next chat MUST inspect current source to verify exact endpoint/controller definitions.
+Cross-service data must be resolved through supported service APIs or the architecture-approved asynchronous mechanism.
 
 ---
 
-# 9. Introspection Behavior
+# 6. Authentication and Authorization Model
 
-Valid JWT:
+Authentication boundary:
 
-HTTP 200
+API Gateway.
 
-`result.valid = true`
+Gateway:
 
-Invalid/malformed/expired JWT:
+* validates/introspects JWT;
+* resolves authenticated identity;
+* overwrites trusted identity headers;
+* forwards:
 
-HTTP 200
+    * `X-Account-Id`
+    * `X-Account-Email`
+    * `X-Account-Role`
 
-`result.valid = false`
+Business authorization and ownership remain inside the owning business service.
 
-Gateway converts invalid authentication state to 401.
+Do not trust account/recruiter/candidate ownership IDs supplied arbitrarily by the frontend.
 
----
+Do not move detailed domain authorization into the Gateway.
 
-# 10. Identity Error/Response Convention
-
-ApiResponse pattern:
-
-```json
-{
-  "code": 1000,
-  "message": "Success",
-  "result": {}
-}
-````
-Identity code range:
-
-`1xxx`
-
-Use meaningful HTTP status.
-
-Do not convert all errors to HTTP `200`.
+Direct calls to downstream service ports are internal/debug calls and do not represent the normal public API flow.
 
 ---
 
-# 11. Role Authorization
+# 7. DAY 1 — COMPLETE
 
-JWT role claim is intended to map into Spring Security authorities.
+Implemented and verified:
 
-Concept:
+## Identity Service
 
-```text
-ADMIN
--> ROLE_ADMIN
-```
+* account registration
+* Candidate registration
+* Recruiter registration
+* public ADMIN registration blocked
+* login
+* BCrypt password hashing
+* JWT generation
+* JWT validation/introspection
+* current account endpoint
+* admin account listing
+* role authorization
+* password hash not exposed
+* MapStruct AccountMapper
+* Spring mapper injection verified
+* OpenAPI/Swagger integration
 
-Admin endpoint:
+## API Gateway
 
-`/identity/admin/**`
+* Identity routing
+* authentication filter
+* Identity introspection
+* trusted identity headers
+* `401` handling
+* public Identity endpoints
+* protected endpoints
+* spoofed trusted headers overwritten
 
-must only allow `ADMIN`.
-
-Candidate and Recruiter must receive `403` for Admin APIs.
-
-Business authorization belongs in owning services.
-
----
-
-# 12. API Gateway
-
-Port:
-
-`8888`
-
-Spring Cloud Gateway WebFlux.
-
-Public API prefix:
-
-`/api/v1`
-
-Example:
-
-```http
-POST http://localhost:8888/api/v1/identity/auth/login
-```
-
-Gateway routes to Identity.
-
-Gateway uses:
-
-`StripPrefix=2`
-
-so downstream receives:
-
-`/identity/auth/login`
+Day 1 is closed.
 
 ---
 
-# 13. Gateway Authentication
+# 8. DAY 2 — COMPLETE
 
-Gateway `GlobalFilter`:
+## STEP 2.1 — Candidate Service + CandidateProfile
 
-- allows configured public endpoints;
-- allows `OPTIONS` requests;
-- extracts Bearer token;
-- calls Identity introspection;
-- returns `401` for missing/invalid authentication;
-- returns `503` if Identity introspection service is unavailable;
-- does not log the raw token.
+Implemented:
 
-Trusted headers may be forwarded:
+* `candidate-service`
+* `candidate_db`
+* CandidateProfile
+* separate Candidate UUID
+* Identity `accountId` reference
+* one profile per Candidate account
+* create own profile
+* get own profile
+* update own profile
+* Candidate-only authorization
+* Gateway Candidate route
+* MapStruct
+* validation
+* MySQL persistence
 
-- `X-Account-Id`;
-- `X-Account-Email`;
-- `X-Account-Role`.
+Stable core CandidateProfile data includes:
 
-Gateway must overwrite spoofed client values.
+* `fullName`
+* `phone`
+* `school`
+* `major`
+* `graduationYear`
+* `location`
 
-Authorization header is still forwarded so services may validate JWT/security context.
-
----
-
-# 14. Authentication vs Authorization Decision
-
-LOCKED:
-
-Authentication:
-
-primarily Gateway boundary.
-
-Authorization:
-
-business service.
-
-Detailed ownership/business permissions:
-
-owning service.
-
-Do NOT implement all authorization in Gateway.
+CandidateProfile does NOT contain Resume/CV contents.
 
 ---
 
-# 15. MapStruct Convention Added
+# 9. STEP 2.2 — Candidate Job Preferences
 
-MapStruct version:
+Implemented:
 
-`1.6.3`
+* `desiredJobTitles`
+* `preferredLocations`
+* `employmentTypes`
+* `workplaceTypes`
+* preference update endpoint
+* preference persistence using collections
+* Candidate ownership
+* GET CandidateProfile returns preferences
+* core profile update does not erase preferences
 
-Lombok:
+Merge known as part of Day 2 history:
 
-`1.18.46`
-
-Binding:
-
-`lombok-mapstruct-binding`
-
-Identity mapper:
-
-`AccountMapper`
-
-Desired pattern:
-
-```
-@Mapper(componentModel = "spring")
-```
-
-Service should inject mapper as a Spring bean.
-
-Mapping logic belongs in mapper.
-
-Business/security logic remains in Service.
-
-Example:
-
-password encoding stays in `AuthenticationService`.
+`9118aaa1b5b21695ac9ed2b7c79d5e37a707b494`
 
 ---
 
-# 16. LAST OBSERVED UNRESOLVED ISSUE
+# 10. STEP 2.3 — Employer Service + Company
 
-The last runtime error observed in the previous chat was:
+Implemented:
 
-Spring could not inject:
+* `employer-service`
+* `employer_db`
+* Company entity/domain
+* separate Company UUID
+* authenticated Recruiter ownership
+* create own Company
+* get own Company
+* update own Company
+* Candidate forbidden from company management
+* Gateway Employer route
+* MapStruct
+* MySQL persistence
 
-`com.tbm.recruitment.identity.mapper.AccountMapper`
+Company ownership is derived from authenticated identity.
 
-Error concept:
+Client does not choose arbitrary `ownerAccountId`.
 
-```text
-No qualifying bean of type AccountMapper available
-```
+Known merge:
 
-Likely area:
+`463959fcf208d4dc0fbea0abeab81a9281832804`
 
-MapStruct annotation processing / generated Spring component.
+---
 
-Before Day 2, inspect current `main` and verify whether this has already been fixed.
+# 11. STEP 2.4 — Job Service + Job Creation
 
-Verification:
+Implemented:
 
-Run:
+* `job-service`
+* `job_db`
+* Job entity
+* Job UUID
+* `companyId`
+* `createdByAccountId`
+* Employer Service REST integration
+* recruiter company resolution
+* create Job
+* newly created Job starts as `DRAFT`
+* salary validation
+* Candidate cannot create Job
+* recruiter without Company cannot create Job
+* Gateway Job route
+* MapStruct
+* MySQL persistence
+
+Job Service does NOT query `employer_db` directly.
+
+Known merge:
+
+`6768a8d6e0c11251ffc1f4e634c6f355f30933d2`
+
+---
+
+# 12. STEP 2.5 — Job Lifecycle + List + Public Search
+
+Implemented and merged:
+
+`6d0c63ea024a6570c906583bb212d3873202a319`
+
+Implemented lifecycle:
+
+* `DRAFT`
+* `PUBLISHED`
+* `CLOSED`
+
+Allowed core transitions:
+
+* `DRAFT -> PUBLISHED`
+* `PUBLISHED -> CLOSED`
+
+Current behavior includes:
+
+* update DRAFT Job
+* prevent modification after publish/close
+* publish Job
+* prevent invalid lifecycle transitions
+* close published Job
+* recruiter list own Company Jobs
+* company ownership checks
+* public Job search
+* search without JWT
+* only `PUBLISHED` Jobs appear in public search
+* keyword filter
+* location filter
+* employment type filter
+* workplace type filter
+* pagination
+* pagination validation
+
+API Gateway has method-aware public handling for:
+
+`GET /api/v1/job/search`
+
+Recruiter management APIs remain protected.
+
+No Kafka Job events were introduced on Day 2.
+
+No Elasticsearch was introduced.
+
+P0 search currently uses MySQL.
+
+---
+
+# 13. Day 2 Architecture State
+
+Core synchronous business flow currently available:
+
+Candidate:
+
+`register -> login -> CandidateProfile -> preferences`
+
+Recruiter:
+
+`register -> login -> Company -> create Job -> publish Job -> close Job`
+
+Public/Candidate:
+
+`search PUBLISHED Jobs`
+
+Current cross-service synchronous relationship:
+
+`Job Service -> Employer Service`
+
+for recruiter Company resolution.
+
+No service directly accesses another service's database.
+
+---
+
+# 14. Day 2 Completion Gate
+
+User confirmed STEP 2.5 completed before creating this checkpoint.
+
+Before Day 3 implementation, the next chat must still inspect actual GitHub `main`.
+
+At minimum verify:
+
+* commit `6d0c63ea024a6570c906583bb212d3873202a319` is present on `main`;
+* root Maven contains all current modules;
+* Candidate Service source exists;
+* Employer Service source exists;
+* Job Service source exists;
+* Job lifecycle source exists;
+* public Job search source exists;
+* Gateway current routing/security configuration matches the source;
+* no unresolved merge conflict is present.
+
+Do not falsely claim build/test/runtime results unless supported by repository state or user-provided results.
+
+---
+
+# 15. DAY 3 Goal
+
+DAY 3 — Resume + Application.
+
+Frozen Day 3 scope from `PROJECT_CONTEXT.md`:
+
+## Resume
+
+* Resume Service
+* MinIO storage
+* resume metadata
+* upload
+* download
+
+## Recruitment
+
+* Recruitment Service
+* application submission
+* persist selected `resumeId`
+* initial recruitment workflow
+
+Day 3 business goal:
+
+Candidate can apply to a Job using a specific Resume.
+
+---
+
+# 16. Important Resume Domain Rules
+
+Do not mix Resume contents into CandidateProfile.
+
+CandidateProfile contains stable candidate information/preferences.
+
+Resume is a separate domain.
+
+A Candidate may have multiple Resumes.
+
+An Application must preserve the exact Resume selected at application time using `resumeId`.
+
+Do not silently replace this with "latest resume".
+
+Resume binary/file storage belongs in MinIO.
+
+Resume metadata/domain persistence must follow the frozen architecture and actual repository conventions.
+
+Before implementing, inspect `ARCHITECTURE.md` for the approved Resume database/storage ownership.
+
+---
+
+# 17. Important Recruitment/Application Rules
+
+Application belongs to Recruitment Service.
+
+Do not put Application directly inside Job Service.
+
+Do not put Application directly inside Candidate Service.
+
+An Application must reference the relevant IDs according to frozen architecture.
+
+At minimum Day 3 must preserve:
+
+* candidate identity/domain reference;
+* job reference;
+* selected `resumeId`;
+* initial workflow/status.
+
+Recruiter/Application authorization belongs in Recruitment Service.
+
+Do not add Kafka workflow before the Day 4 step unless the actual frozen architecture or updated plan explicitly requires it.
+
+---
+
+# 18. Day 3 Implementation Strategy
+
+Do not implement all Day 3 features at once.
+
+Likely sequence must be determined after inspecting actual `main`.
+
+Expected direction:
+
+## STEP 3.1
+
+Resume Service foundation + Resume metadata + MinIO upload.
+
+## STEP 3.2
+
+Resume list/get/download/ownership refinement as required.
+
+## STEP 3.3
+
+Recruitment Service foundation + Application submission using explicit `resumeId`.
+
+## STEP 3.4
+
+Initial Application read/workflow foundation as required to complete Day 3 P0.
+
+The exact split must be based on:
+
+* actual source;
+* frozen architecture;
+* P0 priority;
+* remaining time.
+
+Only ONE implementation STEP at a time.
+
+After every STEP:
+
+STOP and wait for user implementation/testing.
+
+---
+
+# 19. Permanent Instruction for Tests
+
+The user tests APIs primarily with Postman.
+
+For every Postman test case:
+
+1. show HTTP method;
+2. show full Gateway URL or Postman variable URL;
+3. show required Authorization header;
+4. show request body if applicable;
+5. immediately below that same test, show its Expected Result.
+
+Do NOT put all expected responses into a separate distant section that forces the user to cross-reference tests.
+
+Public endpoints must explicitly say when Authorization must be omitted.
+
+Business API tests should normally use the Gateway URL, not direct internal service ports.
+
+---
+
+# 20. Permanent Instruction for Code Output
+
+When a STEP requires creating or modifying a source file:
+
+* provide the actual code required;
+* provide complete code when replacement of the file is required;
+* do not say only:
+
+    * "copy the Candidate version";
+    * "copy this file from Employer Service";
+    * "same as the previous service";
+    * "reuse the existing handler and change the package";
+* do not force the user to reconstruct required code from earlier chat messages.
+
+Existing reusable source should still be inspected to preserve conventions, but the answer must show the concrete implementation needed for the current STEP.
+
+Do not dump unrelated services.
+
+Only show files required by the current STEP.
+
+---
+
+# 21. Quality Gate
+
+Before a STEP is DONE, run as applicable:
 
 ```bash
+mvn spotless:apply
+mvn spotless:check
+mvn clean test
 mvn clean compile
 ```
 
-Check generated file:
+Also verify:
 
-`identity-service/target/generated-sources/annotations/com/tbm/recruitment/identity/mapper/AccountMapperImpl.java`
-
-It should exist.
-
-Generated implementation should be registered as a Spring component.
-
-Then run Identity Service and verify startup succeeds.
-
-If current `main` already contains the fix, mark this issue resolved.
-
-If not, fix this before Day 2.
+* service startup;
+* Gateway routing where applicable;
+* Postman success cases;
+* Postman failure/security cases;
+* persistence;
+* mapper generation where MapStruct is used;
+* no committed `.env`;
+* no committed `target/`;
+* no real secrets.
 
 ---
 
-# 17. Day 1 Regression Gate
+# 22. Git Workflow
 
-Before declaring Day 1 DONE, verify:
+Normal workflow:
 
-## Build
+`main`
+-> new short-lived feature branch
+-> implementation
+-> Spotless
+-> compile/test
+-> Postman/runtime tests
+-> commit
+-> push
+-> pull request
+-> merge to `main`
 
-- `mvn spotless:check` passes;
-- `mvn clean test` passes.
+Do not continue new work on already merged feature branches.
 
-## Identity
+At the end of Day 3:
 
-- service starts on `8081`;
-- Swagger/OpenAPI loads if committed;
-- register Candidate works;
-- register Recruiter works;
-- public `ADMIN` registration is blocked;
-- login returns JWT;
-- introspection valid token -> `true`;
-- introspection invalid token -> `false`.
-
-## Gateway
-
-- starts on `8888`;
-- Identity health routes through Gateway;
-- login routes through Gateway.
-
-## Authentication
-
-Without token:
-
-```http
-GET /api/v1/identity/me
-```
-
--> `401`
-
-Invalid token:
-
--> `401`
-
-Valid token:
-
--> `200`
-
-## Authorization
-
-Candidate JWT:
-
-Admin accounts endpoint
-
--> `403`
-
-Recruiter JWT:
-
-Admin accounts endpoint
-
--> `403`
-
-Admin JWT:
-
-Admin accounts endpoint
-
--> `200`
-
-Response must not expose `passwordHash`.
-
-## Security
-
-- no raw JWT logging;
-- no committed real secrets.
-
-Only when all items above pass:
-
-```text
-DAY 1 = DONE
-```
+* regression test completed Day 3 flow;
+* merge completed work into `main`;
+* update this checkpoint;
+* commit checkpoint.
 
 ---
 
-# 18. Next Planned Work
+# 23. Next Action
 
-Only after Day 1 regression gate passes:
+The next chat must NOT immediately invent STEP 3.1 code.
 
-## DAY 2
+First:
 
-### STEP 2.1
+1. inspect actual GitHub `main`;
+2. read all five mandatory project files;
+3. inspect current modules and relevant source;
+4. verify Day 2 state against commit `6d0c63ea024a6570c906583bb212d3873202a319`;
+5. inspect MinIO configuration already present;
+6. inspect architecture constraints for Resume Service and Recruitment Service;
+7. identify any inconsistency/blocker.
 
-Candidate Service foundation + `CandidateProfile`.
+If Day 2 is clean:
 
-Initial Day 2 direction:
+NEXT:
 
-Candidate Service:
+`DAY 3 — STEP 3.1 — Resume Service foundation + Resume metadata + MinIO upload`
 
-- add Maven module;
-- bootstrap Spring Boot service;
-- connect `candidate_db`;
-- `CandidateProfile` entity;
-- candidate ownership;
-- DTOs;
-- MapStruct mapper;
-- repository;
-- service;
-- controller;
-- validation;
-- Gateway route;
-- authentication integration;
-- persistence tests.
+Then follow the mandatory 16-section STEP format from `MASTER_PROMPT.md`.
 
-Stable `CandidateProfile` fields:
+After STEP 3.1:
 
-- `fullName`;
-- `phone`;
-- `school`;
-- `major`;
-- `graduationYear`;
-- `location`;
-- `desiredJobTitles`;
-- `preferredLocations`;
-- `employmentTypes`;
-- `workplaceTypes`.
-
-`CandidateProfile` must NOT contain CV/resume contents.
-
-Candidate identity must be linked to the authenticated Identity account.
-
-Do not accept arbitrary account ownership from the client.
-
----
-
-# 19. Planned Day 2 Sequence
-
-Do not implement all of Day 2 at once.
-
-Likely sequence:
-
-### STEP 2.1
-
-Candidate Service bootstrap + `CandidateProfile`.
-
-### STEP 2.2
-
-Candidate profile read/update + preferences/ownership refinement as required.
-
-### STEP 2.3
-
-Employer Service foundation/company domain.
-
-### STEP 2.4
-
-Job Service foundation + job creation.
-
-### STEP 2.5
-
-Job lifecycle/list/search foundation.
-
-Exact split must be determined from actual repository state and time remaining.
-
-One step at a time.
-
----
-
-# 20. Do Not Start Yet
-
-Before writing Day 2 implementation code:
-
-- inspect GitHub `main`;
-- read the five project context files;
-- verify Day 1 gate;
-- summarize current architecture;
-- identify unresolved issues.
-
-Only then proceed.
-
-# MapStruct Issue Status
-
-RESOLVED.
-
-Verified:
-- `mvn clean compile` passes;
-- `AccountMapperImpl` is generated;
-- generated mapper is a Spring component;
-- Identity Service starts successfully;
-- no `AccountMapper` injection error remains.
-
-## DAY 2
-### STEP 2.1
-
-Candidate Service foundation + `CandidateProfile`.
+STOP.

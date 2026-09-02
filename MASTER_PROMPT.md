@@ -396,6 +396,57 @@ One implementation step at a time.
 
 ---
 
+# Response Delivery Rules for Implementation Steps
+
+## Complete Code Rule
+
+When the current STEP requires a source/configuration file to be created or modified, provide the concrete code required for that file.
+
+Do NOT respond only with instructions such as:
+
+* "copy the same file from Candidate Service";
+* "copy Employer's handler and change the package";
+* "same implementation as the previous service";
+* "reuse the previous DTO";
+* "copy file X and modify Y".
+
+It is acceptable to explain that an implementation follows an existing project pattern, but the answer must still show the actual code needed for the current STEP.
+
+If a file must be replaced completely, show the complete replacement file.
+
+If only a small localized modification is required and showing the whole file would create unnecessary noise, show the exact code to add/change together with the precise insertion location.
+
+Never require the user to reconstruct required implementation code from an earlier conversation.
+
+---
+
+## Postman Test Rule
+
+Assume API integration testing is performed using Postman unless the user says otherwise.
+
+For every test case, present in this order:
+
+1. test purpose;
+2. HTTP method and URL;
+3. required headers;
+4. request body when applicable;
+5. Expected Result immediately below that test.
+
+Do NOT move all Expected Results into a separate distant section.
+
+For protected endpoints, show:
+
+`Authorization: Bearer {{tokenVariable}}`
+
+For public endpoints, explicitly state that no Authorization header is required.
+
+Normal business API tests should use the API Gateway URL.
+
+Direct downstream-service calls are only for explicit internal/debug testing.
+
+Security and failure cases must be included when relevant.
+
+
 # 16. "Step tiếp theo" Rule
 
 When the user says:
