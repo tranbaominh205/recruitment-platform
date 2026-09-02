@@ -26,6 +26,10 @@ public enum ErrorCode {
 
   JOB_SERVICE_UNAVAILABLE(6009, "Job service unavailable", HttpStatus.SERVICE_UNAVAILABLE),
 
+  APPLICATION_NOT_FOUND(6010, "Application not found", HttpStatus.NOT_FOUND),
+
+  JOB_NOT_FOUND(6011, "Job not found", HttpStatus.NOT_FOUND),
+
   INTERNAL_SERVER_ERROR(6999, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
 
   private final int code;
@@ -33,6 +37,7 @@ public enum ErrorCode {
   private final HttpStatus status;
 
   ErrorCode(int code, String message, HttpStatus status) {
+
     this.code = code;
     this.message = message;
     this.status = status;
