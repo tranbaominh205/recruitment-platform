@@ -19,6 +19,7 @@
     <module>api-gateway</module>
     <module>candidate-service</module>
     <module>employer-service</module>
+    <module>job-service</module>
   </modules>
 
   <properties>
