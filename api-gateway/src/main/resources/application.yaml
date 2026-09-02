@@ -38,6 +38,12 @@ spring:
                 - Path=${app.api-prefix}/job/**
               filters:
                 - StripPrefix=2
+            - id: resume-service
+              uri: ${RESUME_SERVICE_URL:http://localhost:8085}
+              predicates:
+                - Path=${app.api-prefix}/resume/**
+              filters:
+                - StripPrefix=2
 
 services:
   identity:
