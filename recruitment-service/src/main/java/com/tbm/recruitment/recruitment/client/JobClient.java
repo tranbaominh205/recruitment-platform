@@ -42,6 +42,7 @@ public class JobClient {
               .body(new ParameterizedTypeReference<>() {});
 
       if (response == null || response.getResult() == null) {
+
         throw new AppException(ErrorCode.JOB_NOT_AVAILABLE);
       }
 
@@ -49,6 +50,54 @@ public class JobClient {
 
     } catch (AppException exception) {
       throw exception;
+
+    } catch (Exception exception) {
+      throw new AppException(ErrorCode.JOB_SERVICE_UNAVAILABLE, exception);
+    }
+  }
+
+  public JobSummaryResponse getOwnedJob(UUID jobId, String accountId, String accountRole) {
+
+    try {
+      ApiResponse<JobSummaryResponse> response =
+          jobRestClient
+              .get()
+              .uri("/job/{jobId}/ownership", jobId)
+              .header("X-Account-Id", accountId)
+              .header("X-Account-Role", accountRole)
+              .retrieve()
+              .onStatus(
+                  status -> status.value() == 404,
+                  (request, responseValue) -> {
+                    throw new AppException(ErrorCode.JOB_NOT_FOUND);
+                  })
+              .onStatus(
+                  status -> status.value() == 401,
+                  (request, responseValue) -> {
+                    throw new AppException(ErrorCode.UNAUTHENTICATED);
+                  })
+              .onStatus(
+                  status -> status.value() == 403,
+                  (request, responseValue) -> {
+                    throw new AppException(ErrorCode.FORBIDDEN);
+                  })
+              .onStatus(
+                  HttpStatusCode::isError,
+                  (request, responseValue) -> {
+                    throw new AppException(ErrorCode.JOB_SERVICE_UNAVAILABLE);
+                  })
+              .body(new ParameterizedTypeReference<>() {});
+
+      if (response == null || response.getResult() == null) {
+
+        throw new AppException(ErrorCode.JOB_NOT_FOUND);
+      }
+
+      return response.getResult();
+
+    } catch (AppException exception) {
+      throw exception;
+
     } catch (Exception exception) {
       throw new AppException(ErrorCode.JOB_SERVICE_UNAVAILABLE, exception);
     }

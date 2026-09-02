@@ -126,6 +126,16 @@ public class JobService {
   }
 
   @Transactional(readOnly = true)
+  public JobResponse getOwnedJobDetails(UUID jobId, String accountIdHeader, String accountRole) {
+
+    requireRecruiterAccount(accountIdHeader, accountRole);
+
+    Job job = getOwnedJob(jobId, accountIdHeader, accountRole);
+
+    return jobMapper.toJobResponse(job);
+  }
+
+  @Transactional(readOnly = true)
   public PageResponse<JobResponse> getMyJobs(
       String accountIdHeader, String accountRole, int page, int size) {
 

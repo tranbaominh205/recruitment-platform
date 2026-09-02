@@ -100,6 +100,21 @@ public class JobController {
         .build();
   }
 
+  @GetMapping("/{jobId}/ownership")
+  public ApiResponse<JobResponse> getOwnedJobDetails(
+      @PathVariable UUID jobId,
+      @RequestHeader(value = "X-Account-Id", required = false) String accountId,
+      @RequestHeader(value = "X-Account-Role", required = false) String accountRole) {
+
+    JobResponse result = jobService.getOwnedJobDetails(jobId, accountId, accountRole);
+
+    return ApiResponse.<JobResponse>builder()
+        .code(ErrorCode.SUCCESS.getCode())
+        .message(ErrorCode.SUCCESS.getMessage())
+        .result(result)
+        .build();
+  }
+
   @GetMapping("/mine")
   public ApiResponse<PageResponse<JobResponse>> getMyJobs(
       @RequestHeader(value = "X-Account-Id", required = false) String accountId,

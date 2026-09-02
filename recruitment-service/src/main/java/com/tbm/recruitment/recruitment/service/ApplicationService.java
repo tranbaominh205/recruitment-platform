@@ -7,6 +7,7 @@ import com.tbm.recruitment.recruitment.dto.request.CreateApplicationRequest;
 import com.tbm.recruitment.recruitment.dto.response.ApplicationResponse;
 import com.tbm.recruitment.recruitment.dto.response.CandidateSummaryResponse;
 import com.tbm.recruitment.recruitment.dto.response.JobSummaryResponse;
+import com.tbm.recruitment.recruitment.dto.response.PageResponse;
 import com.tbm.recruitment.recruitment.dto.response.ResumeSummaryResponse;
 import com.tbm.recruitment.recruitment.entity.Application;
 import com.tbm.recruitment.recruitment.enums.ApplicationStatus;
@@ -15,10 +16,14 @@ import com.tbm.recruitment.recruitment.exception.ErrorCode;
 import com.tbm.recruitment.recruitment.mapper.ApplicationMapper;
 import com.tbm.recruitment.recruitment.repository.ApplicationRepository;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -59,18 +64,150 @@ public class ApplicationService {
     return applicationMapper.toApplicationResponse(savedApplication);
   }
 
+  public PageResponse<ApplicationResponse> getMyApplications(
+      String accountIdHeader, String accountRole, int page, int size) {
+
+    requireCandidateAccount(accountIdHeader, accountRole);
+
+    validatePagination(page, size);
+
+    CandidateSummaryResponse candidate = candidateClient.getMyProfile(accountIdHeader, accountRole);
+
+    PageRequest pageRequest =
+        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "submittedAt"));
+
+    Page<Application> applicationPage =
+        applicationRepository.findAllByCandidateId(candidate.id(), pageRequest);
+
+    return toPageResponse(applicationPage);
+  }
+
+  public PageResponse<ApplicationResponse> getApplicationsForOwnedJob(
+      UUID jobId, String accountIdHeader, String accountRole, int page, int size) {
+
+    requireRecruiterAccount(accountIdHeader, accountRole);
+
+    validatePagination(page, size);
+
+    jobClient.getOwnedJob(jobId, accountIdHeader, accountRole);
+
+    PageRequest pageRequest =
+        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "submittedAt"));
+
+    Page<Application> applicationPage = applicationRepository.findAllByJobId(jobId, pageRequest);
+
+    return toPageResponse(applicationPage);
+  }
+
+  public ApplicationResponse getApplication(
+      UUID applicationId, String accountIdHeader, String accountRole) {
+
+    requireAuthenticatedAccount(accountIdHeader);
+
+    Application application;
+
+    if ("CANDIDATE".equals(accountRole)) {
+      application = getCandidateApplication(applicationId, accountIdHeader, accountRole);
+
+    } else if ("RECRUITER".equals(accountRole)) {
+      application = getRecruiterApplication(applicationId, accountIdHeader, accountRole);
+
+    } else {
+      throw new AppException(ErrorCode.FORBIDDEN);
+    }
+
+    return applicationMapper.toApplicationResponse(application);
+  }
+
+  private Application getCandidateApplication(
+      UUID applicationId, String accountIdHeader, String accountRole) {
+
+    CandidateSummaryResponse candidate = candidateClient.getMyProfile(accountIdHeader, accountRole);
+
+    return applicationRepository
+        .findByIdAndCandidateId(applicationId, candidate.id())
+        .orElseThrow(() -> new AppException(ErrorCode.APPLICATION_NOT_FOUND));
+  }
+
+  private Application getRecruiterApplication(
+      UUID applicationId, String accountIdHeader, String accountRole) {
+
+    Application application =
+        applicationRepository
+            .findById(applicationId)
+            .orElseThrow(() -> new AppException(ErrorCode.APPLICATION_NOT_FOUND));
+
+    try {
+      jobClient.getOwnedJob(application.getJobId(), accountIdHeader, accountRole);
+
+    } catch (AppException exception) {
+
+      if (exception.getErrorCode() == ErrorCode.JOB_NOT_FOUND) {
+
+        throw new AppException(ErrorCode.APPLICATION_NOT_FOUND);
+      }
+
+      throw exception;
+    }
+
+    return application;
+  }
+
+  private void validatePagination(int page, int size) {
+
+    if (page < 0 || size < 1 || size > 100) {
+
+      throw new AppException(ErrorCode.INVALID_REQUEST);
+    }
+  }
+
+  private PageResponse<ApplicationResponse> toPageResponse(Page<Application> applicationPage) {
+
+    List<ApplicationResponse> content =
+        applicationPage.getContent().stream()
+            .map(applicationMapper::toApplicationResponse)
+            .toList();
+
+    return new PageResponse<>(
+        content,
+        applicationPage.getNumber(),
+        applicationPage.getSize(),
+        applicationPage.getTotalElements(),
+        applicationPage.getTotalPages());
+  }
+
   private UUID requireCandidateAccount(String accountIdHeader, String accountRole) {
 
-    if (accountIdHeader == null || accountIdHeader.isBlank()) {
-      throw new AppException(ErrorCode.UNAUTHENTICATED);
-    }
+    UUID accountId = requireAuthenticatedAccount(accountIdHeader);
 
     if (!"CANDIDATE".equals(accountRole)) {
       throw new AppException(ErrorCode.FORBIDDEN);
     }
 
+    return accountId;
+  }
+
+  private UUID requireRecruiterAccount(String accountIdHeader, String accountRole) {
+
+    UUID accountId = requireAuthenticatedAccount(accountIdHeader);
+
+    if (!"RECRUITER".equals(accountRole)) {
+      throw new AppException(ErrorCode.FORBIDDEN);
+    }
+
+    return accountId;
+  }
+
+  private UUID requireAuthenticatedAccount(String accountIdHeader) {
+
+    if (accountIdHeader == null || accountIdHeader.isBlank()) {
+
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
     try {
       return UUID.fromString(accountIdHeader);
+
     } catch (IllegalArgumentException exception) {
       throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
