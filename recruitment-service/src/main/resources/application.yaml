@@ -1,0 +1,30 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: recruitment-service
+
+  datasource:
+    url: ${RECRUITMENT_DBMS_CONNECTION:jdbc:mysql://localhost:3306/recruitment_db}
+    username: ${RECRUITMENT_DBMS_USERNAME:root}
+    password: ${RECRUITMENT_DBMS_PASSWORD:root123456}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+services:
+  candidate:
+    base-url: ${CANDIDATE_SERVICE_URL:http://localhost:8082}
+
+  resume:
+    base-url: ${RESUME_SERVICE_URL:http://localhost:8085}
+
+  job:
+    base-url: ${JOB_SERVICE_URL:http://localhost:8084}

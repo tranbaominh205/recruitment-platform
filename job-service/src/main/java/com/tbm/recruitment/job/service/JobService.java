@@ -115,6 +115,17 @@ public class JobService {
   }
 
   @Transactional(readOnly = true)
+  public JobResponse getPublishedJob(UUID jobId) {
+
+    Job job =
+        jobRepository
+            .findByIdAndStatus(jobId, JobStatus.PUBLISHED)
+            .orElseThrow(() -> new AppException(ErrorCode.JOB_NOT_FOUND));
+
+    return jobMapper.toJobResponse(job);
+  }
+
+  @Transactional(readOnly = true)
   public PageResponse<JobResponse> getMyJobs(
       String accountIdHeader, String accountRole, int page, int size) {
 
