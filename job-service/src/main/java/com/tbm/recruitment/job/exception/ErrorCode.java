@@ -23,6 +23,10 @@ public enum ErrorCode {
   EMPLOYER_SERVICE_UNAVAILABLE(
       4006, "Employer service unavailable", HttpStatus.SERVICE_UNAVAILABLE),
 
+  JOB_NOT_FOUND(4007, "Job not found", HttpStatus.NOT_FOUND),
+
+  INVALID_JOB_STATUS(4008, "Invalid job status transition", HttpStatus.CONFLICT),
+
   INTERNAL_SERVER_ERROR(4999, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
 
   private final int code;
