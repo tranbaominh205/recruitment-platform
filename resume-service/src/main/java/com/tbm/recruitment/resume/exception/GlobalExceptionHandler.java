@@ -4,6 +4,7 @@ import com.tbm.recruitment.resume.dto.response.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
@@ -28,35 +29,29 @@ public class GlobalExceptionHandler {
   ResponseEntity<ApiResponse<Void>> handleMissingRequestPart(
       MissingServletRequestPartException exception) {
 
-    ErrorCode errorCode = ErrorCode.INVALID_REQUEST;
+    return buildErrorResponse(ErrorCode.INVALID_REQUEST);
+  }
 
-    ApiResponse<Void> response =
-        ApiResponse.<Void>builder()
-            .code(errorCode.getCode())
-            .message(errorCode.getMessage())
-            .build();
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  ResponseEntity<ApiResponse<Void>> handleArgumentTypeMismatch(
+      MethodArgumentTypeMismatchException exception) {
 
-    return ResponseEntity.status(errorCode.getStatus()).body(response);
+    return buildErrorResponse(ErrorCode.INVALID_REQUEST);
   }
 
   @ExceptionHandler(MaxUploadSizeExceededException.class)
   ResponseEntity<ApiResponse<Void>> handleMaxUploadSize(MaxUploadSizeExceededException exception) {
 
-    ErrorCode errorCode = ErrorCode.INVALID_FILE;
-
-    ApiResponse<Void> response =
-        ApiResponse.<Void>builder()
-            .code(errorCode.getCode())
-            .message(errorCode.getMessage())
-            .build();
-
-    return ResponseEntity.status(errorCode.getStatus()).body(response);
+    return buildErrorResponse(ErrorCode.INVALID_FILE);
   }
 
   @ExceptionHandler(Exception.class)
   ResponseEntity<ApiResponse<Void>> handleException(Exception exception) {
 
-    ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
+    return buildErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR);
+  }
+
+  private ResponseEntity<ApiResponse<Void>> buildErrorResponse(ErrorCode errorCode) {
 
     ApiResponse<Void> response =
         ApiResponse.<Void>builder()

@@ -4,6 +4,8 @@ import com.tbm.recruitment.resume.configuration.MinioProperties;
 import com.tbm.recruitment.resume.exception.AppException;
 import com.tbm.recruitment.resume.exception.ErrorCode;
 import io.minio.BucketExistsArgs;
+import io.minio.GetObjectArgs;
+import io.minio.GetObjectResponse;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
@@ -44,6 +46,19 @@ public class ResumeStorageService {
                 .contentType(contentType)
                 .build());
       }
+
+    } catch (Exception exception) {
+      throw new AppException(ErrorCode.STORAGE_ERROR, exception);
+    }
+  }
+
+  public byte[] download(String storageKey) {
+
+    try (GetObjectResponse response =
+        minioClient.getObject(
+            GetObjectArgs.builder().bucket(minioProperties.bucket()).object(storageKey).build())) {
+
+      return response.readAllBytes();
 
     } catch (Exception exception) {
       throw new AppException(ErrorCode.STORAGE_ERROR, exception);

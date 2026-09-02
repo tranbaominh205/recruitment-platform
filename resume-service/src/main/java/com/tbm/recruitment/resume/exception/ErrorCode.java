@@ -17,6 +17,8 @@ public enum ErrorCode {
 
   STORAGE_ERROR(5005, "Resume storage error", HttpStatus.INTERNAL_SERVER_ERROR),
 
+  RESUME_NOT_FOUND(5006, "Resume not found", HttpStatus.NOT_FOUND),
+
   INTERNAL_SERVER_ERROR(5999, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
 
   private final int code;
