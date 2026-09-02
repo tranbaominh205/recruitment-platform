@@ -88,6 +88,18 @@ public class JobController {
         .build();
   }
 
+  @GetMapping("/{jobId}")
+  public ApiResponse<JobResponse> getPublishedJob(@PathVariable UUID jobId) {
+
+    JobResponse result = jobService.getPublishedJob(jobId);
+
+    return ApiResponse.<JobResponse>builder()
+        .code(ErrorCode.SUCCESS.getCode())
+        .message(ErrorCode.SUCCESS.getMessage())
+        .result(result)
+        .build();
+  }
+
   @GetMapping("/mine")
   public ApiResponse<PageResponse<JobResponse>> getMyJobs(
       @RequestHeader(value = "X-Account-Id", required = false) String accountId,

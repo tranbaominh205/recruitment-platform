@@ -66,7 +66,7 @@ For Controllers and Services, prefer the Devteria-style pattern when suitable:
 
 ```
 @RequiredArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true) 
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 ````
 Example:
 
