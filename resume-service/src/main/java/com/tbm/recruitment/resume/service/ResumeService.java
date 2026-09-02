@@ -1,5 +1,6 @@
 package com.tbm.recruitment.resume.service;
 
+import com.tbm.recruitment.resume.dto.response.ResumeDownloadResponse;
 import com.tbm.recruitment.resume.dto.response.ResumeResponse;
 import com.tbm.recruitment.resume.entity.Resume;
 import com.tbm.recruitment.resume.enums.ResumeStatus;
@@ -9,6 +10,7 @@ import com.tbm.recruitment.resume.mapper.ResumeMapper;
 import com.tbm.recruitment.resume.repository.ResumeRepository;
 import com.tbm.recruitment.resume.storage.ResumeStorageService;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -70,6 +72,44 @@ public class ResumeService {
     }
 
     return resumeMapper.toResumeResponse(savedResume);
+  }
+
+  public List<ResumeResponse> getMyResumes(String accountIdHeader, String accountRole) {
+
+    UUID ownerAccountId = requireCandidateAccount(accountIdHeader, accountRole);
+
+    return resumeRepository.findAllByOwnerAccountIdOrderByCreatedAtDesc(ownerAccountId).stream()
+        .map(resumeMapper::toResumeResponse)
+        .toList();
+  }
+
+  public ResumeResponse getMyResume(UUID resumeId, String accountIdHeader, String accountRole) {
+
+    UUID ownerAccountId = requireCandidateAccount(accountIdHeader, accountRole);
+
+    Resume resume = findOwnedResume(resumeId, ownerAccountId);
+
+    return resumeMapper.toResumeResponse(resume);
+  }
+
+  public ResumeDownloadResponse downloadMyResume(
+      UUID resumeId, String accountIdHeader, String accountRole) {
+
+    UUID ownerAccountId = requireCandidateAccount(accountIdHeader, accountRole);
+
+    Resume resume = findOwnedResume(resumeId, ownerAccountId);
+
+    byte[] content = resumeStorageService.download(resume.getStorageKey());
+
+    return new ResumeDownloadResponse(
+        resume.getOriginalFileName(), resume.getContentType(), content);
+  }
+
+  private Resume findOwnedResume(UUID resumeId, UUID ownerAccountId) {
+
+    return resumeRepository
+        .findByIdAndOwnerAccountId(resumeId, ownerAccountId)
+        .orElseThrow(() -> new AppException(ErrorCode.RESUME_NOT_FOUND));
   }
 
   private UUID requireCandidateAccount(String accountIdHeader, String accountRole) {
