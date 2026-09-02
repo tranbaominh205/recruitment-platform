@@ -33,8 +33,10 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
   @NonFinal
   String apiPrefix;
 
-  static Set<String> PUBLIC_ENDPOINTS =
-      Set.of("/identity/health", "/identity/auth/register", "/identity/auth/login");
+  static Set<String> PUBLIC_GET_ENDPOINTS = Set.of("/identity/health", "/job/search");
+
+  static Set<String> PUBLIC_POST_ENDPOINTS =
+      Set.of("/identity/auth/register", "/identity/auth/login");
 
   IdentityClient identityClient;
 
@@ -69,7 +71,9 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
                       .headers(
                           headers -> {
                             headers.set("X-Account-Id", result.accountId());
+
                             headers.set("X-Account-Email", result.email());
+
                             headers.set("X-Account-Role", result.role());
                           })
                       .build();
@@ -89,13 +93,32 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
   }
 
   private boolean isPublicEndpoint(ServerHttpRequest request) {
+
     if (request.getMethod() == HttpMethod.OPTIONS) {
       return true;
     }
 
     String path = request.getURI().getPath();
+    String downstreamPath = removeApiPrefix(path);
 
-    return PUBLIC_ENDPOINTS.stream().anyMatch(endpoint -> path.equals(apiPrefix + endpoint));
+    if (request.getMethod() == HttpMethod.GET) {
+      return PUBLIC_GET_ENDPOINTS.contains(downstreamPath);
+    }
+
+    if (request.getMethod() == HttpMethod.POST) {
+      return PUBLIC_POST_ENDPOINTS.contains(downstreamPath);
+    }
+
+    return false;
+  }
+
+  private String removeApiPrefix(String path) {
+
+    if (path.startsWith(apiPrefix)) {
+      return path.substring(apiPrefix.length());
+    }
+
+    return path;
   }
 
   private String extractBearerToken(ServerHttpRequest request) {
