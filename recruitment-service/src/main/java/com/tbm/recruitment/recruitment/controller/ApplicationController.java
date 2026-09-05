@@ -103,6 +103,22 @@ public class ApplicationController {
         .build();
   }
 
+  @PatchMapping("/{applicationId}/withdraw")
+  public ApiResponse<ApplicationResponse> withdrawApplication(
+      @PathVariable UUID applicationId,
+      @RequestHeader(value = "X-Account-Id", required = false) String accountId,
+      @RequestHeader(value = "X-Account-Role", required = false) String accountRole) {
+
+    ApplicationResponse result =
+        applicationService.withdrawApplication(applicationId, accountId, accountRole);
+
+    return ApiResponse.<ApplicationResponse>builder()
+        .code(ErrorCode.SUCCESS.getCode())
+        .message(ErrorCode.SUCCESS.getMessage())
+        .result(result)
+        .build();
+  }
+
   @GetMapping("/{applicationId}")
   public ApiResponse<ApplicationResponse> getApplication(
       @PathVariable UUID applicationId,

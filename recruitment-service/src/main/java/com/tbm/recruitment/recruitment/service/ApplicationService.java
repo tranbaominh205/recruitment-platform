@@ -141,6 +141,23 @@ public class ApplicationService {
     return applicationMapper.toApplicationResponse(savedApplication);
   }
 
+  @Transactional
+  public ApplicationResponse withdrawApplication(
+      UUID applicationId, String accountIdHeader, String accountRole) {
+
+    requireCandidateAccount(accountIdHeader, accountRole);
+
+    Application application = getCandidateApplication(applicationId, accountIdHeader, accountRole);
+
+    validateCandidateWithdrawTransition(application.getStatus());
+
+    application.setStatus(ApplicationStatus.WITHDRAWN);
+
+    Application savedApplication = applicationRepository.save(application);
+
+    return applicationMapper.toApplicationResponse(savedApplication);
+  }
+
   private Application getCandidateApplication(
       UUID applicationId, String accountIdHeader, String accountRole) {
 
@@ -202,6 +219,19 @@ public class ApplicationService {
           case OFFER ->
               targetStatus == ApplicationStatus.HIRED || targetStatus == ApplicationStatus.REJECTED;
 
+          case HIRED, REJECTED, WITHDRAWN -> false;
+        };
+
+    if (!allowed) {
+      throw new AppException(ErrorCode.INVALID_APPLICATION_STATUS_TRANSITION);
+    }
+  }
+
+  private void validateCandidateWithdrawTransition(ApplicationStatus currentStatus) {
+
+    boolean allowed =
+        switch (currentStatus) {
+          case SUBMITTED, SCREENING, INTERVIEW, OFFER -> true;
           case HIRED, REJECTED, WITHDRAWN -> false;
         };
 
