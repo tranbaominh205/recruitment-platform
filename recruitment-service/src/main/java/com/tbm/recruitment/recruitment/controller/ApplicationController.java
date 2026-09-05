@@ -1,6 +1,7 @@
 package com.tbm.recruitment.recruitment.controller;
 
 import com.tbm.recruitment.recruitment.dto.request.CreateApplicationRequest;
+import com.tbm.recruitment.recruitment.dto.request.UpdateApplicationStatusRequest;
 import com.tbm.recruitment.recruitment.dto.response.ApiResponse;
 import com.tbm.recruitment.recruitment.dto.response.ApplicationResponse;
 import com.tbm.recruitment.recruitment.dto.response.PageResponse;
@@ -14,6 +15,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -78,6 +80,23 @@ public class ApplicationController {
         applicationService.getApplicationsForOwnedJob(jobId, accountId, accountRole, page, size);
 
     return ApiResponse.<PageResponse<ApplicationResponse>>builder()
+        .code(ErrorCode.SUCCESS.getCode())
+        .message(ErrorCode.SUCCESS.getMessage())
+        .result(result)
+        .build();
+  }
+
+  @PatchMapping("/{applicationId}/status")
+  public ApiResponse<ApplicationResponse> updateApplicationStatus(
+      @PathVariable UUID applicationId,
+      @RequestHeader(value = "X-Account-Id", required = false) String accountId,
+      @RequestHeader(value = "X-Account-Role", required = false) String accountRole,
+      @Valid @RequestBody UpdateApplicationStatusRequest request) {
+
+    ApplicationResponse result =
+        applicationService.updateApplicationStatus(applicationId, accountId, accountRole, request);
+
+    return ApiResponse.<ApplicationResponse>builder()
         .code(ErrorCode.SUCCESS.getCode())
         .message(ErrorCode.SUCCESS.getMessage())
         .result(result)

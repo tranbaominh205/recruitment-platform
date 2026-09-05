@@ -4,6 +4,7 @@ import com.tbm.recruitment.recruitment.client.CandidateClient;
 import com.tbm.recruitment.recruitment.client.JobClient;
 import com.tbm.recruitment.recruitment.client.ResumeClient;
 import com.tbm.recruitment.recruitment.dto.request.CreateApplicationRequest;
+import com.tbm.recruitment.recruitment.dto.request.UpdateApplicationStatusRequest;
 import com.tbm.recruitment.recruitment.dto.response.ApplicationResponse;
 import com.tbm.recruitment.recruitment.dto.response.CandidateSummaryResponse;
 import com.tbm.recruitment.recruitment.dto.response.JobSummaryResponse;
@@ -25,6 +26,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -119,6 +121,26 @@ public class ApplicationService {
     return applicationMapper.toApplicationResponse(application);
   }
 
+  @Transactional
+  public ApplicationResponse updateApplicationStatus(
+      UUID applicationId,
+      String accountIdHeader,
+      String accountRole,
+      UpdateApplicationStatusRequest request) {
+
+    requireRecruiterAccount(accountIdHeader, accountRole);
+
+    Application application = getRecruiterApplication(applicationId, accountIdHeader, accountRole);
+
+    validateRecruiterStatusTransition(application.getStatus(), request.status());
+
+    application.setStatus(request.status());
+
+    Application savedApplication = applicationRepository.save(application);
+
+    return applicationMapper.toApplicationResponse(savedApplication);
+  }
+
   private Application getCandidateApplication(
       UUID applicationId, String accountIdHeader, String accountRole) {
 
@@ -158,6 +180,33 @@ public class ApplicationService {
     if (page < 0 || size < 1 || size > 100) {
 
       throw new AppException(ErrorCode.INVALID_REQUEST);
+    }
+  }
+
+  private void validateRecruiterStatusTransition(
+      ApplicationStatus currentStatus, ApplicationStatus targetStatus) {
+
+    boolean allowed =
+        switch (currentStatus) {
+          case SUBMITTED ->
+              targetStatus == ApplicationStatus.SCREENING
+                  || targetStatus == ApplicationStatus.REJECTED;
+
+          case SCREENING ->
+              targetStatus == ApplicationStatus.INTERVIEW
+                  || targetStatus == ApplicationStatus.REJECTED;
+
+          case INTERVIEW ->
+              targetStatus == ApplicationStatus.OFFER || targetStatus == ApplicationStatus.REJECTED;
+
+          case OFFER ->
+              targetStatus == ApplicationStatus.HIRED || targetStatus == ApplicationStatus.REJECTED;
+
+          case HIRED, REJECTED, WITHDRAWN -> false;
+        };
+
+    if (!allowed) {
+      throw new AppException(ErrorCode.INVALID_APPLICATION_STATUS_TRANSITION);
     }
   }
 
