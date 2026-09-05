@@ -30,8 +30,10 @@ public enum ErrorCode {
 
   JOB_NOT_FOUND(6011, "Job not found", HttpStatus.NOT_FOUND),
 
-  INTERNAL_SERVER_ERROR(6999, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
+  INVALID_APPLICATION_STATUS_TRANSITION(
+      6012, "Invalid application status transition", HttpStatus.CONFLICT),
 
+  INTERNAL_SERVER_ERROR(6999, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
   private final int code;
   private final String message;
   private final HttpStatus status;
