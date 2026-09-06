@@ -9,7 +9,9 @@ import com.tbm.recruitment.matching.dto.response.MatchResultResponse;
 import com.tbm.recruitment.matching.exception.AppException;
 import com.tbm.recruitment.matching.exception.DownstreamServiceException;
 import com.tbm.recruitment.matching.exception.ErrorCode;
+import com.tbm.recruitment.matching.extractor.MatchExplanationGenerator;
 import com.tbm.recruitment.matching.model.JobMatchingCriteria;
+import com.tbm.recruitment.matching.model.MatchExplanation;
 import com.tbm.recruitment.matching.model.MatchScoreResult;
 import com.tbm.recruitment.matching.repository.MatchResultRepository;
 import java.time.Instant;
@@ -29,6 +31,7 @@ public class ApplicationMatchingService {
   private final JobServiceClient jobServiceClient;
   private final ResumeAnalysisService resumeAnalysisService;
   private final DeterministicMatchScorer deterministicMatchScorer;
+  private final MatchExplanationGenerator matchExplanationGenerator;
   private final MatchResultRepository matchResultRepository;
 
   public MatchResultResponse matchApplication(
@@ -49,6 +52,7 @@ public class ApplicationMatchingService {
         fetchOwnedJobMatchingCriteria(application.getJobId(), accountId, accountRole);
     StructuredResume structuredResume = analyzeResume(application.getResumeId());
     MatchScoreResult scoreResult = score(structuredResume, criteria);
+    MatchExplanation explanation = generateExplanation(criteria, structuredResume, scoreResult);
 
     MatchResult toSave =
         MatchResult.builder()
@@ -66,6 +70,7 @@ public class ApplicationMatchingService {
             .missingSkills(scoreResult.missingSkills())
             .scoringVersion(DETERMINISTIC_SCORING_VERSION)
             .scoredAt(Instant.now())
+            .explanation(explanation)
             .build();
 
     MatchResult saved = matchResultRepository.save(toSave);
@@ -127,6 +132,17 @@ public class ApplicationMatchingService {
       return deterministicMatchScorer.score(structuredResume, criteria);
     } catch (RuntimeException exception) {
       throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, exception);
+    }
+  }
+
+  private MatchExplanation generateExplanation(
+      JobMatchingCriteria criteria,
+      StructuredResume structuredResume,
+      MatchScoreResult scoreResult) {
+    try {
+      return matchExplanationGenerator.generate(criteria, structuredResume, scoreResult);
+    } catch (RuntimeException exception) {
+      throw new AppException(ErrorCode.DEPENDENCY_UNAVAILABLE, exception);
     }
   }
 
@@ -211,6 +227,7 @@ public class ApplicationMatchingService {
         matchResult.getMatchedSkills(),
         matchResult.getMissingSkills(),
         matchResult.getScoringVersion(),
-        matchResult.getScoredAt());
+        matchResult.getScoredAt(),
+        matchResult.getExplanation());
   }
 }

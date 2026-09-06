@@ -12,7 +12,9 @@ import com.tbm.recruitment.matching.document.StructuredResume;
 import com.tbm.recruitment.matching.exception.AppException;
 import com.tbm.recruitment.matching.exception.DownstreamServiceException;
 import com.tbm.recruitment.matching.exception.ErrorCode;
+import com.tbm.recruitment.matching.extractor.MatchExplanationGenerator;
 import com.tbm.recruitment.matching.model.JobMatchingCriteria;
+import com.tbm.recruitment.matching.model.MatchExplanation;
 import com.tbm.recruitment.matching.model.MatchScoreResult;
 import com.tbm.recruitment.matching.repository.MatchResultRepository;
 import java.time.Instant;
@@ -34,6 +36,7 @@ class ApplicationMatchingServiceTest {
   @Mock private JobServiceClient jobServiceClient;
   @Mock private ResumeAnalysisService resumeAnalysisService;
   @Mock private DeterministicMatchScorer deterministicMatchScorer;
+  @Mock private MatchExplanationGenerator matchExplanationGenerator;
   @Mock private MatchResultRepository matchResultRepository;
 
   @InjectMocks private ApplicationMatchingService subject;
@@ -73,7 +76,18 @@ class ApplicationMatchingServiceTest {
         new MatchScoreResult(90.0, 55.0, 20.0, 10.0, 3.0, 2.0, List.of("Java"), List.of());
     when(deterministicMatchScorer.score(structured, criteria)).thenReturn(scoreResult);
 
-    subject.matchApplication(applicationId, "recruiter-1", "RECRUITER");
+    MatchExplanation explanation =
+        new MatchExplanation(
+            "Strong Java match with a clear backend fit.",
+            List.of("Java skills", "Backend experience"),
+            List.of("Limited AWS breadth"),
+            "gemini-3.5-flash",
+            Instant.now());
+    when(matchExplanationGenerator.generate(criteria, structured, scoreResult))
+        .thenReturn(explanation);
+
+    var response = subject.matchApplication(applicationId, "recruiter-1", "RECRUITER");
+    assertEquals(explanation, response.explanation());
 
     ArgumentCaptor<MatchResult> savedCaptor = ArgumentCaptor.forClass(MatchResult.class);
     verify(matchResultRepository, times(1)).save(savedCaptor.capture());
@@ -83,6 +97,7 @@ class ApplicationMatchingServiceTest {
     assertEquals(jobId, saved.getJobId());
     assertEquals(resumeId, saved.getResumeId());
     assertEquals(90.0, saved.getTotalScore());
+    assertEquals(explanation, saved.getExplanation());
   }
 
   @Test
@@ -91,6 +106,13 @@ class ApplicationMatchingServiceTest {
             eq(applicationId), anyString(), anyString()))
         .thenReturn(buildApplication());
 
+    MatchExplanation explanation =
+        new MatchExplanation(
+            "Existing explanation.",
+            List.of("Match"),
+            List.of("Gap"),
+            "gemini-3.5-flash",
+            Instant.now());
     MatchResult cached =
         MatchResult.builder()
             .applicationId(applicationId)
@@ -107,6 +129,7 @@ class ApplicationMatchingServiceTest {
             .missingSkills(List.of())
             .scoringVersion("deterministic-v1")
             .scoredAt(Instant.now())
+            .explanation(explanation)
             .build();
 
     when(matchResultRepository.findById(applicationId)).thenReturn(Optional.of(cached));
@@ -114,11 +137,13 @@ class ApplicationMatchingServiceTest {
     var response = subject.matchApplication(applicationId, "recruiter-1", "RECRUITER");
     assertEquals(applicationId, response.applicationId());
     assertEquals(42.0, response.totalScore());
+    assertEquals(explanation, response.explanation());
 
     verify(jobServiceClient, never())
         .fetchOwnedJobMatchingCriteria(any(), anyString(), anyString());
     verify(resumeAnalysisService, never()).analyzeAndPersist(any());
     verify(deterministicMatchScorer, never()).score(any(), any());
+    verify(matchExplanationGenerator, never()).generate(any(), any(), any());
     verify(matchResultRepository, never()).save(any()); // not saved again
   }
 
@@ -171,6 +196,34 @@ class ApplicationMatchingServiceTest {
   }
 
   @Test
+  void explanationGenerationFailure_throwsDependencyUnavailable_andDoesNotSave() {
+    when(recruitmentServiceClient.fetchRecruiterApplication(
+            eq(applicationId), anyString(), anyString()))
+        .thenReturn(buildApplication());
+    when(matchResultRepository.findById(applicationId)).thenReturn(Optional.empty());
+    when(jobServiceClient.fetchOwnedJobMatchingCriteria(eq(jobId), anyString(), anyString()))
+        .thenReturn(new JobMatchingCriteria("T", List.of("Java"), 2, null, "D"));
+
+    StructuredResume structured =
+        StructuredResume.builder().resumeId(resumeId).skills(List.of("Java")).build();
+    when(resumeAnalysisService.analyzeAndPersist(resumeId)).thenReturn(structured);
+    MatchScoreResult scoreResult =
+        new MatchScoreResult(80.0, 55.0, 20.0, 5.0, 0.0, 0.0, List.of("Java"), List.of());
+    when(deterministicMatchScorer.score(eq(structured), any(JobMatchingCriteria.class)))
+        .thenReturn(scoreResult);
+    when(matchExplanationGenerator.generate(any(), any(), any()))
+        .thenThrow(new RuntimeException("explanation unavailable"));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () -> subject.matchApplication(applicationId, "recruiter-1", "RECRUITER"));
+
+    assertEquals(ErrorCode.DEPENDENCY_UNAVAILABLE, exception.getErrorCode());
+    verify(matchResultRepository, never()).save(any());
+  }
+
+  @Test
   void scorerFailure_noSave() {
     when(recruitmentServiceClient.fetchRecruiterApplication(
             eq(applicationId), anyString(), anyString()))
@@ -196,6 +249,43 @@ class ApplicationMatchingServiceTest {
             eq(applicationId), anyString(), anyString()))
         .thenReturn(buildApplication());
 
+    MatchExplanation explanation =
+        new MatchExplanation(
+            "Stored explanation.",
+            List.of("Skill"),
+            List.of("Gap"),
+            "gemini-3.5-flash",
+            Instant.now());
+    MatchResult cached =
+        MatchResult.builder()
+            .applicationId(applicationId)
+            .candidateId(candidateId)
+            .jobId(jobId)
+            .resumeId(resumeId)
+            .totalScore(55.0)
+            .scoringVersion("deterministic-v1")
+            .scoredAt(Instant.now())
+            .explanation(explanation)
+            .build();
+    when(matchResultRepository.findById(applicationId)).thenReturn(Optional.of(cached));
+
+    var resp = subject.getMatchResult(applicationId, "recruiter-1", "RECRUITER");
+    assertEquals(applicationId, resp.applicationId());
+    assertEquals(explanation, resp.explanation());
+
+    verify(jobServiceClient, never())
+        .fetchOwnedJobMatchingCriteria(any(), anyString(), anyString());
+    verify(resumeAnalysisService, never()).analyzeAndPersist(any());
+    verify(deterministicMatchScorer, never()).score(any(), any());
+    verify(matchExplanationGenerator, never()).generate(any(), any(), any());
+  }
+
+  @Test
+  void legacyMatchResultWithNullExplanation_returnsWithoutBackfill() {
+    when(recruitmentServiceClient.fetchRecruiterApplication(
+            eq(applicationId), anyString(), anyString()))
+        .thenReturn(buildApplication());
+
     MatchResult cached =
         MatchResult.builder()
             .applicationId(applicationId)
@@ -209,12 +299,8 @@ class ApplicationMatchingServiceTest {
     when(matchResultRepository.findById(applicationId)).thenReturn(Optional.of(cached));
 
     var resp = subject.getMatchResult(applicationId, "recruiter-1", "RECRUITER");
-    assertEquals(applicationId, resp.applicationId());
-
-    verify(jobServiceClient, never())
-        .fetchOwnedJobMatchingCriteria(any(), anyString(), anyString());
-    verify(resumeAnalysisService, never()).analyzeAndPersist(any());
-    verify(deterministicMatchScorer, never()).score(any(), any());
+    assertNull(resp.explanation());
+    verify(matchExplanationGenerator, never()).generate(any(), any(), any());
   }
 
   @Test
