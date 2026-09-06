@@ -16,7 +16,7 @@ DAY 5 DONE / DAY 6 READY
 
 # 1. Critical Rule for the Next Chat
 
-Before generating any Day 5 implementation code:
+Before generating any Day 6 implementation code:
 
 1. Read:
     - `MASTER_PROMPT.md`
@@ -31,7 +31,7 @@ Before generating any Day 5 implementation code:
     - use actual source to determine implementation state;
     - explicitly report the inconsistency;
     - do not silently rewrite frozen architecture/domain rules.
-6. Confirm Day 4 source state before starting Day 5.
+6. Confirm Day 5 source state before starting Day 6.
 7. Do not claim compile/test/runtime/Postman success without actual evidence.
 
 Known Day 3 final implementation merge:
@@ -567,7 +567,7 @@ These are Candidate-owned APIs.
 
 Recruiters must NOT receive unrestricted Resume browsing access.
 
-Recruiter-facing matching later must use Resume data versus Job requirements and must preserve the exact selected Resume relationship where Application context is involved.
+Recruiter-facing matching uses Resume data versus Job requirements and preserves the exact selected Resume relationship where Application context is involved.
 
 ---
 
@@ -937,9 +937,9 @@ main
 
 Merged branches are historical/read-only.
 
-Do not continue new work on merged Day 1-4 branches.
+Do not continue new work on merged Day 1-5 branches.
 
-Before every new Day 5 STEP:
+Before every new Day 6 STEP:
 
 - checkout/pull latest `main`;
 - inspect actual source;
@@ -1152,7 +1152,7 @@ Commits implementing Day 5 on main:
 - `1f7c8fe` — Deterministic scoring engine (55-25-10-5-5 weights)
 - `426e25ac` — Recruitment and Job Service matching client integration
 - `c09fc5ac` — Recruiter Application matching flow + MatchResult persistence/API
-- `9283b4f` — Recruiter-safe Gemini match explanation generation
+- `dc427fd2a7a479ee15a391639f30449cff229874` — feat: add AI match explanation
 
 Day 5 source-level scope is complete.
 
@@ -1219,7 +1219,7 @@ GitHub repository:
 
 Latest known Day 5 final implementation merge:
 
-`9283b4f` — feat: add AI match explanation
+`dc427fd2a7a479ee15a391639f30449cff229874` — feat: add AI match explanation
 
 This checkpoint reflects Day 5 DONE / Day 6 READY state.
 
