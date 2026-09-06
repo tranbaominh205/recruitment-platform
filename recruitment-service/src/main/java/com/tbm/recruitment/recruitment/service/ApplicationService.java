@@ -12,6 +12,7 @@ import com.tbm.recruitment.recruitment.dto.response.PageResponse;
 import com.tbm.recruitment.recruitment.dto.response.ResumeSummaryResponse;
 import com.tbm.recruitment.recruitment.entity.Application;
 import com.tbm.recruitment.recruitment.enums.ApplicationStatus;
+import com.tbm.recruitment.recruitment.event.ApplicationStatusChangedEvent;
 import com.tbm.recruitment.recruitment.exception.AppException;
 import com.tbm.recruitment.recruitment.exception.ErrorCode;
 import com.tbm.recruitment.recruitment.mapper.ApplicationMapper;
@@ -22,6 +23,7 @@ import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -35,6 +37,7 @@ public class ApplicationService {
 
   ApplicationRepository applicationRepository;
   ApplicationMapper applicationMapper;
+  ApplicationEventPublisher applicationEventPublisher;
 
   CandidateClient candidateClient;
   ResumeClient resumeClient;
@@ -134,9 +137,13 @@ public class ApplicationService {
 
     validateRecruiterStatusTransition(application.getStatus(), request.status());
 
+    ApplicationStatus previousStatus = application.getStatus();
+
     application.setStatus(request.status());
 
     Application savedApplication = applicationRepository.save(application);
+
+    publishApplicationStatusChangedEvent(savedApplication, previousStatus);
 
     return applicationMapper.toApplicationResponse(savedApplication);
   }
@@ -151,9 +158,13 @@ public class ApplicationService {
 
     validateCandidateWithdrawTransition(application.getStatus());
 
+    ApplicationStatus previousStatus = application.getStatus();
+
     application.setStatus(ApplicationStatus.WITHDRAWN);
 
     Application savedApplication = applicationRepository.save(application);
+
+    publishApplicationStatusChangedEvent(savedApplication, previousStatus);
 
     return applicationMapper.toApplicationResponse(savedApplication);
   }
@@ -190,6 +201,21 @@ public class ApplicationService {
     }
 
     return application;
+  }
+
+  private void publishApplicationStatusChangedEvent(
+      Application application, ApplicationStatus previousStatus) {
+
+    ApplicationStatusChangedEvent event =
+        new ApplicationStatusChangedEvent(
+            UUID.randomUUID(),
+            application.getId(),
+            application.getCandidateId(),
+            previousStatus.name(),
+            application.getStatus().name(),
+            Instant.now());
+
+    applicationEventPublisher.publishEvent(event);
   }
 
   private void validatePagination(int page, int size) {

@@ -3,6 +3,7 @@ package com.tbm.recruitment.candidate.service;
 import com.tbm.recruitment.candidate.dto.request.CreateCandidateProfileRequest;
 import com.tbm.recruitment.candidate.dto.request.UpdateCandidatePreferencesRequest;
 import com.tbm.recruitment.candidate.dto.request.UpdateCandidateProfileRequest;
+import com.tbm.recruitment.candidate.dto.response.CandidateAccountResponse;
 import com.tbm.recruitment.candidate.dto.response.CandidateProfileResponse;
 import com.tbm.recruitment.candidate.entity.CandidateProfile;
 import com.tbm.recruitment.candidate.exception.AppException;
@@ -106,5 +107,16 @@ public class CandidateProfileService {
     CandidateProfile savedCandidateProfile = candidateProfileRepository.save(candidateProfile);
 
     return candidateMapper.toCandidateProfileResponse(savedCandidateProfile);
+  }
+
+  @Transactional(readOnly = true)
+  public CandidateAccountResponse getCandidateAccount(UUID candidateId) {
+
+    CandidateProfile candidateProfile =
+        candidateProfileRepository
+            .findById(candidateId)
+            .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
+
+    return new CandidateAccountResponse(candidateProfile.getAccountId());
   }
 }

@@ -11,6 +11,11 @@ public enum ErrorCode {
 
   FORBIDDEN(8002, "Forbidden", HttpStatus.FORBIDDEN),
 
+  CANDIDATE_NOT_FOUND(8003, "Candidate not found", HttpStatus.NOT_FOUND),
+
+  CANDIDATE_SERVICE_UNAVAILABLE(
+      8004, "Candidate service unavailable", HttpStatus.SERVICE_UNAVAILABLE),
+
   INTERNAL_SERVER_ERROR(8999, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
 
   private final int code;

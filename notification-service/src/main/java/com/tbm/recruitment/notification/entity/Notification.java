@@ -21,6 +21,8 @@ public class Notification {
 
   @Id private UUID id;
 
+  private UUID sourceEventId;
+
   private UUID recipientAccountId;
 
   private NotificationType type;
