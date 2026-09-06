@@ -35,15 +35,21 @@ public class NotificationService {
   }
 
   public NotificationResponse createNotification(
+      UUID sourceEventId,
       UUID recipientAccountId,
       NotificationType type,
       String title,
       String message,
       UUID referenceId) {
 
+    if (notificationRepository.existsBySourceEventId(sourceEventId)) {
+      return null;
+    }
+
     Notification notification =
         Notification.builder()
             .id(UUID.randomUUID())
+            .sourceEventId(sourceEventId)
             .recipientAccountId(recipientAccountId)
             .type(type)
             .title(title)

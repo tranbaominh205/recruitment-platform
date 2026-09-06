@@ -4,6 +4,17 @@ server:
 spring:
   application:
     name: notification-service
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    consumer:
+      group-id: notification-application-status
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+      properties:
+        "[spring.json.value.default.type]": com.tbm.recruitment.notification.event.ApplicationStatusChangedEvent
+        "[spring.json.trusted.packages]": com.tbm.recruitment.notification.event
+        "[spring.json.use.type.headers]": false
 
   mongodb:
     host: ${MONGO_HOST:localhost}
@@ -14,3 +25,11 @@ spring:
     authentication-database: admin
     representation:
       uuid: standard
+services:
+  candidate:
+    base-url: ${CANDIDATE_SERVICE_URL:http://localhost:8082}
+
+app:
+  kafka:
+    topics:
+      application-status-changed: application.status.changed

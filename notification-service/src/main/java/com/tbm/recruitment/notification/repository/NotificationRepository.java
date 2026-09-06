@@ -8,4 +8,6 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 public interface NotificationRepository extends MongoRepository<Notification, UUID> {
 
   List<Notification> findAllByRecipientAccountIdOrderByCreatedAtDesc(UUID recipientAccountId);
+
+  boolean existsBySourceEventId(UUID sourceEventId);
 }
