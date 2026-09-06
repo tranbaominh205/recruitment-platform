@@ -33,6 +33,13 @@ public enum ErrorCode {
   INVALID_APPLICATION_STATUS_TRANSITION(
       6012, "Invalid application status transition", HttpStatus.CONFLICT),
 
+  APPLICATION_NOT_READY_FOR_INTERVIEW(
+      6013, "Application must be in INTERVIEW status", HttpStatus.CONFLICT),
+
+  INTERVIEW_ALREADY_SCHEDULED(6014, "Interview already scheduled", HttpStatus.CONFLICT),
+
+  INTERVIEW_NOT_FOUND(6015, "Interview not found", HttpStatus.NOT_FOUND),
+
   INTERNAL_SERVER_ERROR(6999, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
   private final int code;
   private final String message;
