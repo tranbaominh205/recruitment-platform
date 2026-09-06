@@ -2,7 +2,7 @@
 
 Last updated:
 
-2026-09-06
+2026-09-07
 
 Project:
 
@@ -10,7 +10,7 @@ Recruitment Platform Capstone
 
 Current phase:
 
-DAY 4 DONE / DAY 5 READY
+DAY 5 DONE / DAY 6 READY
 
 ---
 
@@ -98,11 +98,8 @@ Implemented modules:
 - `job-service`
 - `resume-service`
 - `recruitment-service`
-- `notification-service`
-
-Not implemented yet:
-
 - `matching-service`
+- `notification-service`
 
 Do not create additional microservices outside the frozen architecture.
 
@@ -142,6 +139,7 @@ Do not choose Spring/Kafka/AI dependencies from tutorials without checking compa
 - Job Service: `8084`
 - Resume Service: `8085`
 - Recruitment Service: `8086`
+- Matching Service: `8087`
 - Notification Service: `8088`
 
 External business API prefix:
@@ -149,8 +147,6 @@ External business API prefix:
 `/api/v1/**`
 
 Downstream services do not duplicate `/api/v1`.
-
-`matching-service` is not implemented yet, so do not treat a Matching port as an existing runtime port.
 
 ---
 
@@ -187,6 +183,16 @@ Resume Service:
 Notification Service:
 
 `notification_db`
+
+Matching Service:
+
+`matching_db`
+
+Current collections in `matching_db`:
+
+- `parsed_resumes` (raw resume text extracted from PDF)
+- `structured_resumes` (normalized structured data from Gemini)
+- `match_results` (recruiter-facing matching results)
 
 ## MinIO
 
@@ -779,8 +785,9 @@ Current external routes include:
 - `/api/v1/resume/**`
 - `/api/v1/recruitment/**`
 - `/api/v1/notification/**`
+- `/api/v1/matching/**`
 
-Resume, Recruitment, and Notification routes are protected by Gateway authentication by default.
+Resume, Recruitment, Notification, and Matching routes are protected by Gateway authentication by default.
 
 Do not make them public.
 
@@ -940,85 +947,248 @@ Before every new Day 5 STEP:
 
 ---
 
-# 22. DAY 5 — FROZEN DIRECTION
+# 22. DAY 5 — COMPLETE
 
-Day 5 direction:
+Day 5 goal:
 
-`Resume <-> Job Matching + AI`
+Recruiter can see explainable Resume–Job match output.
 
-Do not implement Day 5 from memory.
+## A. Job Matching Prerequisites
 
-Before writing code, re-read `PROJECT_CONTEXT.md`, `ARCHITECTURE.md`, and actual source on `main`.
+Job Service now supports recruiter matching criteria:
 
-Recruiter-facing deterministic matching weights are frozen as:
+- `requiredSkills` (ElementCollection, List<String>)
+- `minimumYearsExperience` (Integer, nullable)
+- `requiredEducationLevel` (Enum: NONE, HIGH_SCHOOL, DIPLOMA, ASSOCIATE, BACHELOR, MASTER, DOCTORATE)
+- `domain` (String, nullable)
 
-- skills: 55%
-- experience: 25%
-- education: 10%
-- title/domain: 10%
+Job updates preserve exact criteria for matching use.
 
-Candidate preferences must NOT be mixed into recruiter matching score.
+## B. Resume Matching Support
 
-Matching must be based on Resume data versus Job requirements.
+Resume upload and matching flow:
 
-AI may assist with explanation/extraction/ranking support only within frozen architecture.
+- Resume upload accepts PDF files only for matching workflow;
+- Resume Service stores binary in MinIO;
+- Resume Service maintains MongoDB metadata (id, ownerAccountId, displayName, originalFileName, contentType, size, storageKey, status, createdAt);
+- Matching Service uses internal Resume Service endpoint `/internal/resume/{resumeId}/content` to retrieve exact Resume content;
+- Matching Service does NOT access Resume Service MinIO directly;
+- Application `resumeId` is immutable and exactly preserved from submission;
+- recruiters cannot directly browse all Resumes; matching uses the exact Application-selected Resume.
 
-AI must NOT automatically:
+## C. Matching Service Foundation
 
-- reject a Candidate;
-- hire a Candidate;
-- mutate Application status.
+Implemented at source level:
 
-No Elasticsearch during Day 5 P0 unless frozen architecture is explicitly changed first.
+- `matching-service` microservice;
+- Spring Boot 4.0.8 with Spring Web;
+- Spring Data MongoDB;
+- Spring AI 2.0.1 with `spring-ai-starter-model-google-genai`;
+- Apache PDFBox 3.0.8 for PDF extraction;
+- MongoDB `matching_db` persistence;
+- port 8087;
+- Gateway route `/api/v1/matching/**` (protected by authentication);
+- internal service clients for Job Service, Recruitment Service, Resume Service.
 
-Do not implement the entire Matching Service in one step.
+## D. Parsed Resume (Raw Text)
+
+`ParsedResume` document in MongoDB `parsed_resumes` collection:
+
+- `resumeId` (UUID, primary key)
+- `rawText` (String) — plain text extracted from PDF by PDFBox
+- `extractedAt` (Instant) — extraction timestamp
+
+ParsedResume stores the raw PDF text output only.
+
+No structured AI fields are stored inside ParsedResume.
+
+Extraction is cached/idempotent: same Resume ID returns cached ParsedResume without re-running PDFBox.
+
+## E. Structured Resume Extraction
+
+`StructuredResume` document in MongoDB `structured_resumes` collection:
+
+- `resumeId` (UUID, primary key)
+- `skills` (List<String>) — normalized skill list from AI extraction
+- `totalYearsExperience` (double)
+- `highestEducationLevel` (EducationLevel enum: UNKNOWN, NONE, HIGH_SCHOOL, DIPLOMA, ASSOCIATE, BACHELOR, MASTER, DOCTORATE)
+- `jobTitles` (List<String>) — extracted job titles
+- `domains` (List<String>) — extracted domains/industries
+- `analyzedAt` (Instant) — Gemini analysis timestamp
+- `extractionModel` (String) — model used for extraction
+
+Gemini 3.5 Flash is configured to produce structured JSON output.
+
+AI extraction is cached/idempotent: existing StructuredResume is reused.
+
+GET requests do not re-run Gemini extraction.
+
+## F. Deterministic Scoring
+
+Recruiter-facing score calculation:
+
+Frozen deterministic weights (deterministic-v1):
+
+- Skills: 55%
+- Experience: 25%
+- Education: 10%
+- Title/Domain: 10% (split as 5% title + 5% domain)
+
+Component scores are calculated deterministically in Java:
+
+- `skillsScore`: matched skill count / total required skill count * 55
+- `experienceScore`: resume experience vs. minimum required * 25
+- `educationScore`: resume education level vs. required level * 10
+- `titleScore`: text similarity (job title vs. resume job titles) * 5
+- `domainScore`: text similarity (job domain vs. resume domains) * 5
+
+`totalScore = sum of component scores` (0-100 range)
+
+Candidate preferences are excluded from recruiter score.
+
+AI does not calculate the recruiter score.
+
+## G. Application Matching API
+
+Public Gateway endpoints (protected):
+
+`POST /api/v1/matching/application/{applicationId}`
+
+- Purpose: generate or return cached MatchResult
+- Authorization: authenticated recruiter who owns the related Job
+- Behavior:
+  - fetch Application from Recruitment Service
+  - verify recruiter owns the Job through Job Service
+  - fetch Job matching criteria
+  - analyze Resume (cached or new)
+  - calculate deterministic score
+  - generate AI explanation (new or cached)
+  - persist MatchResult
+  - return MatchResultResponse
+
+`GET /api/v1/matching/application/{applicationId}`
+
+- Purpose: read existing MatchResult only
+- Authorization: authenticated recruiter who owns the related Job
+- Behavior:
+  - fetch MatchResult from MongoDB
+  - verify recruiter owns the Job (same ownership check as POST)
+  - verify stored IDs match Application (applicationId, candidateId, jobId, resumeId)
+  - candidate access is forbidden
+  - another recruiter (owning different Job) must not receive cached result data
+  - return MatchResultResponse
+
+Both endpoints use X-Account-Id, X-Account-Role headers from Gateway.
+
+No Application status mutation occurs during matching.
+
+## H. MatchResult Persistence
+
+`MatchResult` document in MongoDB `match_results` collection:
+
+- `applicationId` (UUID, primary key) — used for cached result lookup
+- `candidateId` (UUID) — from Application
+- `jobId` (UUID) — from Application
+- `resumeId` (UUID) — exact selected Resume from Application
+- `totalScore` (double, 0-100)
+- `skillsScore` (double)
+- `experienceScore` (double)
+- `educationScore` (double)
+- `titleScore` (double)
+- `domainScore` (double)
+- `matchedSkills` (List<String>) — normalized skills that appear in both Resume and Job requirements
+- `missingSkills` (List<String>) — Job required skills NOT found in Resume
+- `scoringVersion` (String) — "deterministic-v1"
+- `scoredAt` (Instant) — timestamp of deterministic scoring
+- `explanation` (MatchExplanation, nullable) — optional AI explanation
+
+Existing legacy MatchResult documents may have null explanation; they are not automatically backfilled by GET.
+
+## I. AI Explanation
+
+`MatchExplanation` record (immutable):
+
+- `summary` (String) — one-paragraph match summary for recruiter
+- `strengths` (List<String>) — up to 5 resume strengths relevant to the job
+- `gaps` (List<String>) — up to 5 resume gaps vs. job requirements
+- `model` (String) — Gemini model used (e.g., "gemini-3.5-flash")
+- `generatedAt` (Instant) — timestamp
+
+Explanation is decision support only.
+
+AI explanation must NOT:
+
+- recalculate deterministic score
+- hire or reject the candidate
+- mutate Application status
+- use candidate preferences
+- expose raw Resume content
+
+Existing legacy MatchResult documents may have null explanation and are not automatically backfilled.
+
+## J. Idempotency
+
+Matching flow idempotency guarantees:
+
+- Authorization happens before cached result access
+- POST request for existing MatchResult returns cached MatchResult without re-running:
+  - Job fetch
+  - Resume analysis (PDFBox)
+  - Resume AI extraction (Gemini)
+  - Deterministic scoring
+  - AI explanation generation
+- GET request does not invoke any AI or scoring logic
+- stored `scoredAt`, `analyzedAt`, and `generatedAt` timestamps remain their persisted values
+
+## K. Day 5 Implementation History
+
+Commits implementing Day 5 on main:
+
+- `b9fc493` — Job structured matching criteria (requiredSkills, minimumYearsExperience, requiredEducationLevel, domain)
+- `2476a81` — Resume internal matching content endpoint; PDF-only validation for matching flow
+- `8bffa5f` — Matching Service foundation (Spring Boot, MongoDB, routes)
+- `268a4f0` — PDF text extraction with PDFBox; ParsedResume persistence
+- `65fed16` — Gemini structured extraction; StructuredResume persistence
+- `1f7c8fe` — Deterministic scoring engine (55-25-10-5-5 weights)
+- `426e25ac` — Recruitment and Job Service matching client integration
+- `c09fc5ac` — Recruiter Application matching flow + MatchResult persistence/API
+- `9283b4f` — Recruiter-safe Gemini match explanation generation
+
+Day 5 source-level scope is complete.
 
 ---
 
-# 23. Next Action
+# 23. Next Action — Day 6 Frontend
 
-Before writing any Day 5 implementation code:
+Before implementing any Day 6 React Frontend:
 
-1. inspect actual GitHub `main`;
-2. read all five mandatory project files;
-3. verify Day 4 final merge:
-    - `ccfd5bf1cad389000f8ea08fc64ff21bdfe2f61f`;
-4. verify this checkpoint is on/consistent with current `main`;
-5. audit current Resume Service:
-    - entity/document;
-    - metadata;
-    - MinIO storage;
-    - secure ownership;
-    - whether any parsed Resume representation already exists;
-6. audit current Job Service:
-    - Job fields;
-    - requirements/skills/experience/education/title/domain data actually available;
-7. confirm `matching-service` still does not exist;
-8. inspect root `pom.xml` Spring AI version;
-9. verify current Spring AI / Google GenAI integration compatible with the locked stack before selecting dependencies;
-10. read frozen matching rules exactly from `PROJECT_CONTEXT.md`;
-11. identify any missing prerequisite data model before scoring;
-12. choose the smallest correct `DAY 5 — STEP 5.1`.
-
-Do NOT immediately create:
-
-- full Matching Service;
-- Resume parser;
-- Gemini integration;
-- scoring engine;
-- ranking API;
-- Kafka workflow
-
-all in one step.
-
-The first Day 5 response in a new chat must begin with:
-
-- source audit;
-- prerequisite/data-contract audit;
-- proposed small Day 5 STEP plan;
-- exact scope of STEP 5.1;
-
-and must NOT write STEP 5.1 code until the user confirms.
+1. audit the current state of `web-app` folder on main:
+   - whether frontend scaffold exists;
+   - whether any React / Vite setup already exists;
+   - whether API client libraries are already configured;
+2. read all five mandatory project files again;
+3. inspect actual GitHub `main` for Day 5 final state;
+4. if frontend does not exist:
+   - initialize new Vite + React project in `web-app`;
+   - configure Axios or similar for Gateway API communication;
+   - define API contract interfaces for P0 workflow;
+5. implement core Candidate UI:
+   - registration/login;
+   - profile management;
+   - resume upload;
+   - job search and apply;
+   - application tracking;
+6. implement core Recruiter UI:
+   - registration/login;
+   - company/employer management;
+   - job creation and publishing;
+   - application review;
+   - matching scores and explanation viewing;
+   - recruiter status transitions;
+   - interview scheduling;
+7. follow P0 workflow only; do not implement P1 UI features;
+8. one Day 6 STEP at a time;
+9. do not assume frontend build/runtime success without evidence.
 
 ---
 
@@ -1026,34 +1196,61 @@ and must NOT write STEP 5.1 code until the user confirms.
 
 Known intentionally deferred items include:
 
-- Matching Service not implemented;
-- Resume parsing not implemented;
-- AI matching not implemented;
 - Elasticsearch not implemented;
+- Candidate recommendation engine (preferences-based) not implemented;
 - interview reschedule/cancel not implemented;
 - multi-round interview workflow not implemented;
 - transactional outbox not implemented;
 - Kafka exactly-once guarantees not claimed;
-- Notification email delivery not implemented;
+- email notifications not implemented;
 - current Notification duplicate protection is P0 idempotency support, not a full exactly-once guarantee.
 
-These are not automatically bugs unless they violate the frozen scope for the current day.
+Day 5 matching and AI are now complete at source level.
 
 ---
 
-# 25. Handoff Rule
+# 25. Handoff Rule — Day 6 Frontier
 
-When starting a new chat for Day 5, provide:
+When starting a new chat for Day 6 React Frontend, provide:
 
-- GitHub `main`:
-  `https://github.com/tranbaominh205/recruitment-platform`
-- the latest `main` merge/checkpoint commit;
-- instruction to read the five mandatory project files;
-- instruction that source code on `main` is implementation truth;
-- instruction to audit before coding;
-- instruction to do only one STEP at a time;
-- instruction to follow all 16 sections required by `MASTER_PROMPT.md`;
-- instruction that Postman Expected Result must be immediately below each request;
-- instruction not to claim build/runtime success without evidence.
+GitHub repository:
+
+`https://github.com/tranbaominh205/recruitment-platform`
+
+Latest known Day 5 final implementation merge:
+
+`9283b4f` — feat: add AI match explanation
+
+This checkpoint reflects Day 5 DONE / Day 6 READY state.
+
+Require the next chat to:
+
+1. read all five mandatory project files:
+   - `MASTER_PROMPT.md`
+   - `PROJECT_CONTEXT.md`
+   - `ARCHITECTURE.md`
+   - `DEVELOPMENT_GUIDE.md`
+   - `CURRENT_CHECKPOINT.md`
+2. inspect actual GitHub `main` and current backend implementation;
+3. treat source code on `main` as implementation truth;
+4. audit whether frontend already exists in `web-app`;
+5. inspect backend API contracts needed by frontend:
+   - Identity (register, login, current account)
+   - Candidate (profile, preferences)
+   - Employer (company)
+   - Job (create, publish, list, search, detail)
+   - Resume (upload, list, download)
+   - Recruitment (apply, track, status, interview)
+   - Matching (application match score and explanation)
+   - Notification (own notifications)
+6. implement only P0 workflow:
+   - core Candidate UI (register → profile → upload resume → search job → apply → track)
+   - core Recruiter UI (register → company → create job → review applications → match score → status transition → schedule interview)
+7. implement one Day 6 STEP at a time;
+8. follow all 16 sections required by `MASTER_PROMPT.md` for every step;
+9. use Postman/API evidence already recorded in checkpoint only as reference;
+10. do not claim fresh runtime/build success without actual evidence.
 
 The new chat must not rely on memory from previous chats.
+
+Each Day 6 STEP must include complete, working frontend code.
