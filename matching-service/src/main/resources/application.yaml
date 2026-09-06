@@ -14,3 +14,7 @@ spring:
       password: ${MONGO_ROOT_PASSWORD:root123456}
       authentication-database: admin
       uuid-representation: standard
+
+services:
+  resume:
+    base-url: ${RESUME_SERVICE_URL:http://localhost:8085}
