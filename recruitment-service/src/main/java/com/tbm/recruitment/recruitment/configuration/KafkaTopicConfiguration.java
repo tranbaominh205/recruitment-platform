@@ -15,4 +15,11 @@ public class KafkaTopicConfiguration {
 
     return TopicBuilder.name(topicName).partitions(1).replicas(1).build();
   }
+
+  @Bean
+  NewTopic interviewScheduledTopic(
+      @Value("${app.kafka.topics.interview-scheduled}") String topicName) {
+
+    return TopicBuilder.name(topicName).partitions(1).replicas(1).build();
+  }
 }

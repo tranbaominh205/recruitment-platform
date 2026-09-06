@@ -8,15 +8,18 @@ import com.tbm.recruitment.recruitment.dto.response.InterviewResponse;
 import com.tbm.recruitment.recruitment.entity.Application;
 import com.tbm.recruitment.recruitment.entity.Interview;
 import com.tbm.recruitment.recruitment.enums.ApplicationStatus;
+import com.tbm.recruitment.recruitment.event.InterviewScheduledEvent;
 import com.tbm.recruitment.recruitment.exception.AppException;
 import com.tbm.recruitment.recruitment.exception.ErrorCode;
 import com.tbm.recruitment.recruitment.mapper.InterviewMapper;
 import com.tbm.recruitment.recruitment.repository.ApplicationRepository;
 import com.tbm.recruitment.recruitment.repository.InterviewRepository;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +35,7 @@ public class InterviewService {
 
   CandidateClient candidateClient;
   JobClient jobClient;
+  ApplicationEventPublisher applicationEventPublisher;
 
   @Transactional
   public InterviewResponse scheduleInterview(
@@ -62,10 +66,15 @@ public class InterviewService {
             .build();
 
     try {
+
       Interview savedInterview = interviewRepository.save(interview);
+
+      publishInterviewScheduledEvent(savedInterview, application.getCandidateId());
+
       return interviewMapper.toInterviewResponse(savedInterview);
 
     } catch (DataIntegrityViolationException exception) {
+
       throw new AppException(ErrorCode.INTERVIEW_ALREADY_SCHEDULED);
     }
   }
@@ -153,6 +162,20 @@ public class InterviewService {
     } catch (IllegalArgumentException exception) {
       throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
+  }
+
+  private void publishInterviewScheduledEvent(Interview interview, UUID candidateId) {
+
+    InterviewScheduledEvent event =
+        new InterviewScheduledEvent(
+            UUID.randomUUID(),
+            interview.getApplicationId(),
+            candidateId,
+            interview.getScheduledAt(),
+            interview.getLocation(),
+            Instant.now());
+
+    applicationEventPublisher.publishEvent(event);
   }
 
   private String normalizeNote(String note) {
