@@ -40,3 +40,4 @@ app:
   kafka:
     topics:
       application-status-changed: application.status.changed
+      interview-scheduled: interview.scheduled
