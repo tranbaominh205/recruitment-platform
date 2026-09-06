@@ -1,7 +1,7 @@
 :root {
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  color: #17212b;
-  background: #f4f7f6;
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #18242a;
+  background: #edf3f0;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -15,4 +15,118 @@ body {
 
 #root {
   min-height: 100vh;
+}
+
+a {
+  color: #0f6b62;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  border-radius: 4px;
+  background: #0f6b62;
+  color: #fff;
+  cursor: pointer;
+  padding: 0.7rem 1rem;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.auth-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 2rem;
+}
+
+.auth-panel {
+  background: #fff;
+  border: 1px solid #c9d8d2;
+  border-radius: 6px;
+  box-shadow: 0 18px 45px rgb(24 36 42 / 10%);
+  max-width: 30rem;
+  padding: 2.5rem;
+  width: 100%;
+}
+
+.auth-panel h1,
+.workspace-page h1 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1;
+  margin: 0 0 1.5rem;
+}
+
+.eyebrow {
+  color: #0f6b62;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 0 0 0.75rem;
+  text-transform: uppercase;
+}
+
+form {
+  display: grid;
+  gap: 1rem;
+}
+
+label {
+  display: grid;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  gap: 0.35rem;
+}
+
+input,
+select {
+  border: 1px solid #adc1ba;
+  border-radius: 3px;
+  box-sizing: border-box;
+  padding: 0.7rem;
+  width: 100%;
+}
+
+.auth-link,
+.error-message,
+.success-message {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.9rem;
+}
+
+.error-message {
+  background: #fff0ed;
+  border-left: 3px solid #b5422f;
+  color: #8d2e20;
+  padding: 0.7rem;
+}
+
+.success-message {
+  background: #e9f5ed;
+  border-left: 3px solid #2d8050;
+  color: #21613b;
+  padding: 0.7rem;
+}
+
+.workspace-page,
+.page-state {
+  box-sizing: border-box;
+  margin: 0 auto;
+  max-width: 58rem;
+  padding: 5rem 2rem;
+}
+
+.workspace-page p,
+.page-state {
+  font-family: ui-sans-serif, system-ui, sans-serif;
 }
