@@ -623,3 +623,44 @@ A step is complete when:
 
 Only after that proceed to the next step.
 ````
+## Frontend Structure Convention
+
+Frontend must follow the Devteria / Bookteria organization style where suitable.
+
+Reference:
+https://github.com/devteria/bookteria/tree/main/web-app
+
+Preferred src structure:
+
+src/
+├── components/
+├── configurations/
+├── pages/
+├── routes/
+├── services/
+├── App.jsx / App.tsx
+├── main.jsx / main.tsx
+└── index.css
+
+Rules:
+
+- components/: reusable UI components
+- configurations/: frontend configuration, Axios/client configuration, constants when appropriate
+- pages/: route-level pages
+- routes/: React Router definitions, protected/role routes
+- services/: API/service modules grouped by backend domain
+- App: application root
+- main: Vite entry point
+
+Keep the organization visually and conceptually close to Devteria/Bookteria so the
+project is easy to follow alongside the reference project.
+
+Adapt the reference to the current stack:
+- use Vite conventions;
+- do not copy CRA-specific files such as index.js/setupTests.js unless actually needed;
+- do not copy Bookteria domain logic;
+- do not blindly copy dependencies or versions;
+- recruitment domain and current backend API contracts remain source of truth.
+
+Do not introduce a different feature-based architecture such as src/features/**
+without an explicit architecture decision.
