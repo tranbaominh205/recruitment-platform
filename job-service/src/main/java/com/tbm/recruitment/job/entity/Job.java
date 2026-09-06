@@ -3,6 +3,8 @@ package com.tbm.recruitment.job.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.*;
 
@@ -31,6 +33,22 @@ public class Job {
 
   @Column(length = 5000)
   private String requirements;
+
+  @ElementCollection
+  @CollectionTable(name = "job_required_skills", joinColumns = @JoinColumn(name = "job_id"))
+  @Column(name = "skill", nullable = false, length = 100)
+  @Builder.Default
+  private List<String> requiredSkills = new ArrayList<>();
+
+  @Column(name = "minimum_years_experience")
+  private Integer minimumYearsExperience;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "required_education_level", length = 30)
+  private EducationLevel requiredEducationLevel;
+
+  @Column(length = 100)
+  private String domain;
 
   @Column(length = 200)
   private String location;

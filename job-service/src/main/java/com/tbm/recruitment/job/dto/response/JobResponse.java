@@ -1,8 +1,10 @@
 package com.tbm.recruitment.job.dto.response;
 
+import com.tbm.recruitment.job.entity.EducationLevel;
 import com.tbm.recruitment.job.entity.JobStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public record JobResponse(
@@ -11,6 +13,10 @@ public record JobResponse(
     String title,
     String description,
     String requirements,
+    List<String> requiredSkills,
+    Integer minimumYearsExperience,
+    EducationLevel requiredEducationLevel,
+    String domain,
     String location,
     String employmentType,
     String workplaceType,
