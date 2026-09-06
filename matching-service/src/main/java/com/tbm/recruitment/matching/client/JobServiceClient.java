@@ -2,6 +2,7 @@ package com.tbm.recruitment.matching.client;
 
 import com.tbm.recruitment.matching.client.dto.JobClientResponse;
 import com.tbm.recruitment.matching.client.dto.ServiceApiResponse;
+import com.tbm.recruitment.matching.exception.DownstreamServiceException;
 import com.tbm.recruitment.matching.model.JobMatchingCriteria;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,8 +42,9 @@ public class JobServiceClient {
               .onStatus(
                   HttpStatusCode::isError,
                   (request, downstreamResponse) -> {
-                    throw new IllegalStateException(
-                        "Job Service returned HTTP " + downstreamResponse.getStatusCode().value());
+                    int status = downstreamResponse.getStatusCode().value();
+                    throw new DownstreamServiceException(
+                        "Job Service", status, "Job Service returned HTTP " + status);
                   })
               .body(JOB_RESPONSE_TYPE);
     } catch (RestClientException exception) {

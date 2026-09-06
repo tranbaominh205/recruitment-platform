@@ -116,9 +116,9 @@ class RecruitmentServiceClientTest {
         .expect(requestTo(BASE_URL + "/recruitment/application/" + applicationId))
         .andRespond(withStatus(status));
 
-    IllegalStateException exception =
+    com.tbm.recruitment.matching.exception.DownstreamServiceException exception =
         assertThrows(
-            IllegalStateException.class,
+            com.tbm.recruitment.matching.exception.DownstreamServiceException.class,
             () ->
                 recruitmentServiceClient.fetchRecruiterApplication(
                     applicationId, "recruiter-1", "RECRUITER"));
