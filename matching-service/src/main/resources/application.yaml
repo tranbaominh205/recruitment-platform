@@ -15,15 +15,15 @@ spring:
           model: gemini-3.5-flash
           temperature: 0.0
 
-  data:
-    mongodb:
-      host: ${MONGO_HOST:localhost}
-      port: ${MONGO_PORT:27017}
-      database: ${MATCHING_MONGO_DATABASE:matching_db}
-      username: ${MONGO_ROOT_USERNAME:root}
-      password: ${MONGO_ROOT_PASSWORD:root123456}
-      authentication-database: admin
-      uuid-representation: standard
+  mongodb:
+    host: ${MONGO_HOST:localhost}
+    port: ${MONGO_PORT:27017}
+    database: ${MATCHING_MONGO_DATABASE:matching_db}
+    username: ${MONGO_ROOT_USERNAME:root}
+    password: ${MONGO_ROOT_PASSWORD:root123456}
+    authentication-database: admin
+    representation:
+      uuid: standard
 
 services:
   resume:

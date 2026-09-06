@@ -149,9 +149,9 @@ class JobServiceClientTest {
         .expect(requestTo(BASE_URL + "/job/" + jobId + "/ownership"))
         .andRespond(withStatus(status));
 
-    IllegalStateException exception =
+    com.tbm.recruitment.matching.exception.DownstreamServiceException exception =
         assertThrows(
-            IllegalStateException.class,
+            com.tbm.recruitment.matching.exception.DownstreamServiceException.class,
             () ->
                 jobServiceClient.fetchOwnedJobMatchingCriteria(jobId, "recruiter-1", "RECRUITER"));
 

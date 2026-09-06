@@ -2,6 +2,7 @@ package com.tbm.recruitment.matching.client;
 
 import com.tbm.recruitment.matching.client.dto.ApplicationClientResponse;
 import com.tbm.recruitment.matching.client.dto.ServiceApiResponse;
+import com.tbm.recruitment.matching.exception.DownstreamServiceException;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
@@ -39,9 +40,11 @@ public class RecruitmentServiceClient {
               .onStatus(
                   HttpStatusCode::isError,
                   (request, downstreamResponse) -> {
-                    throw new IllegalStateException(
-                        "Recruitment Service returned HTTP "
-                            + downstreamResponse.getStatusCode().value());
+                    int status = downstreamResponse.getStatusCode().value();
+                    throw new DownstreamServiceException(
+                        "Recruitment Service",
+                        status,
+                        "Recruitment Service returned HTTP " + status);
                   })
               .body(APPLICATION_RESPONSE_TYPE);
     } catch (RestClientException exception) {

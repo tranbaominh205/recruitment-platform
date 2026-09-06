@@ -57,6 +57,13 @@ spring:
               filters:
                 - StripPrefix=2
 
+            - id: matching-service
+              uri: ${MATCHING_SERVICE_URL:http://localhost:8087}
+              predicates:
+                - Path=${app.api-prefix}/matching/**
+              filters:
+                - StripPrefix=2
+
 services:
   identity:
     url: ${IDENTITY_SERVICE_URL:http://localhost:8081}
