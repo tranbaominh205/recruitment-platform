@@ -1,5 +1,6 @@
 package com.tbm.recruitment.matching.document;
 
+import com.tbm.recruitment.matching.model.MatchExplanation;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -43,9 +44,12 @@ public class MatchResult {
 
   private Instant scoredAt;
 
+  private MatchExplanation explanation;
+
   public MatchResult() {
     this.matchedSkills = List.of();
     this.missingSkills = List.of();
+    this.explanation = null;
   }
 
   public MatchResult(
@@ -63,6 +67,40 @@ public class MatchResult {
       List<String> missingSkills,
       String scoringVersion,
       Instant scoredAt) {
+    this(
+        applicationId,
+        candidateId,
+        jobId,
+        resumeId,
+        totalScore,
+        skillsScore,
+        experienceScore,
+        educationScore,
+        titleScore,
+        domainScore,
+        matchedSkills,
+        missingSkills,
+        scoringVersion,
+        scoredAt,
+        null);
+  }
+
+  public MatchResult(
+      UUID applicationId,
+      UUID candidateId,
+      UUID jobId,
+      UUID resumeId,
+      double totalScore,
+      double skillsScore,
+      double experienceScore,
+      double educationScore,
+      double titleScore,
+      double domainScore,
+      List<String> matchedSkills,
+      List<String> missingSkills,
+      String scoringVersion,
+      Instant scoredAt,
+      MatchExplanation explanation) {
     this.applicationId = applicationId;
     this.candidateId = candidateId;
     this.jobId = jobId;
@@ -77,6 +115,7 @@ public class MatchResult {
     this.missingSkills = copyList(missingSkills);
     this.scoringVersion = scoringVersion;
     this.scoredAt = scoredAt;
+    this.explanation = explanation;
   }
 
   public void setMatchedSkills(List<String> matchedSkills) {
