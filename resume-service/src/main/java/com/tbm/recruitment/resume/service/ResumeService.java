@@ -9,8 +9,12 @@ import com.tbm.recruitment.resume.exception.ErrorCode;
 import com.tbm.recruitment.resume.mapper.ResumeMapper;
 import com.tbm.recruitment.resume.repository.ResumeRepository;
 import com.tbm.recruitment.resume.storage.ResumeStorageService;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -105,6 +109,19 @@ public class ResumeService {
         resume.getOriginalFileName(), resume.getContentType(), content);
   }
 
+  public ResumeDownloadResponse getResumeContentForInternalUse(UUID resumeId) {
+
+    Resume resume =
+        resumeRepository
+            .findById(resumeId)
+            .orElseThrow(() -> new AppException(ErrorCode.RESUME_NOT_FOUND));
+
+    byte[] content = resumeStorageService.download(resume.getStorageKey());
+
+    return new ResumeDownloadResponse(
+        resume.getOriginalFileName(), resume.getContentType(), content);
+  }
+
   private Resume findOwnedResume(UUID resumeId, UUID ownerAccountId) {
 
     return resumeRepository
@@ -133,6 +150,28 @@ public class ResumeService {
 
     if (file == null || file.isEmpty() || file.getSize() <= 0) {
       throw new AppException(ErrorCode.INVALID_FILE);
+    }
+
+    String originalFileName = resolveOriginalFileName(file.getOriginalFilename());
+    if (originalFileName == null
+        || originalFileName.isBlank()
+        || !originalFileName.toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+      throw new AppException(ErrorCode.INVALID_FILE);
+    }
+
+    String contentType = file.getContentType();
+    if (!"application/pdf".equalsIgnoreCase(contentType == null ? "" : contentType.trim())) {
+      throw new AppException(ErrorCode.INVALID_FILE);
+    }
+
+    try (InputStream inputStream = file.getInputStream()) {
+      byte[] header = inputStream.readNBytes(5);
+      String pdfSignature = new String(header, StandardCharsets.US_ASCII);
+      if (!"%PDF-".equals(pdfSignature)) {
+        throw new AppException(ErrorCode.INVALID_FILE);
+      }
+    } catch (IOException exception) {
+      throw new AppException(ErrorCode.INVALID_FILE, exception);
     }
   }
 
