@@ -22,6 +22,7 @@
     <module>job-service</module>
     <module>resume-service</module>
     <module>recruitment-service</module>
+    <module>notification-service</module>
   </modules>
 
   <properties>

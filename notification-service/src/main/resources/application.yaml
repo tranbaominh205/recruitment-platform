@@ -1,0 +1,16 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: notification-service
+
+  mongodb:
+    host: ${MONGO_HOST:localhost}
+    port: ${MONGO_PORT:27017}
+    database: ${NOTIFICATION_MONGO_DATABASE:notification_db}
+    username: ${MONGO_ROOT_USERNAME:root}
+    password: ${MONGO_ROOT_PASSWORD:root123456}
+    authentication-database: admin
+    representation:
+      uuid: standard
