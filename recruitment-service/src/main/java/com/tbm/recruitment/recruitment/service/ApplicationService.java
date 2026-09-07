@@ -10,6 +10,7 @@ import com.tbm.recruitment.recruitment.dto.response.CandidateSummaryResponse;
 import com.tbm.recruitment.recruitment.dto.response.JobSummaryResponse;
 import com.tbm.recruitment.recruitment.dto.response.PageResponse;
 import com.tbm.recruitment.recruitment.dto.response.ResumeSummaryResponse;
+import com.tbm.recruitment.recruitment.dto.response.SubmittedResumeContent;
 import com.tbm.recruitment.recruitment.entity.Application;
 import com.tbm.recruitment.recruitment.enums.ApplicationStatus;
 import com.tbm.recruitment.recruitment.event.ApplicationStatusChangedEvent;
@@ -122,6 +123,14 @@ public class ApplicationService {
     }
 
     return applicationMapper.toApplicationResponse(application);
+  }
+
+  public SubmittedResumeContent getSubmittedResumeContent(
+      UUID applicationId, String accountIdHeader, String accountRole) {
+
+    requireRecruiterAccount(accountIdHeader, accountRole);
+    Application application = getRecruiterApplication(applicationId, accountIdHeader, accountRole);
+    return resumeClient.getResumeContent(application.getResumeId());
   }
 
   @Transactional

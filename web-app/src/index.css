@@ -23,8 +23,13 @@ a {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
+}
+
+textarea {
+  resize: vertical;
 }
 
 button {
@@ -268,8 +273,22 @@ select {
 }
 
 .form-grid button,
-.form-grid .section-heading {
+.form-grid .section-heading,
+.full-width {
   grid-column: 1 / -1;
+}
+
+.page-heading,
+.action-row {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.action-row {
+  flex-wrap: wrap;
+  justify-content: flex-start;
 }
 
 .section-heading {
@@ -353,6 +372,31 @@ select {
 .apply-panel {
   margin-top: 2rem;
   padding: 1.5rem;
+}
+
+.content-note {
+  background: #f4f7f5;
+  border-left: 3px solid #0f6b62;
+  padding: 0.8rem 1rem;
+}
+
+@media (max-width: 700px) {
+  .form-grid,
+  .detail-grid,
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shell-header,
+  .page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .shell-account {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 .content-section p {

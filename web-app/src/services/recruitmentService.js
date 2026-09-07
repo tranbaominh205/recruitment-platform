@@ -21,3 +21,8 @@ export function withdrawApplication(applicationId) {
 export function getInterview(applicationId) {
   return apiClient.get(`/recruitment/application/${applicationId}/interview`).then(getResult)
 }
+
+export function getApplicationsForJob(jobId, params) { return apiClient.get(`/recruitment/application/job/${jobId}`, { params }).then(getResult) }
+export function updateApplicationStatus(applicationId, status) { return apiClient.patch(`/recruitment/application/${applicationId}/status`, { status }).then(getResult) }
+export function scheduleInterview(applicationId, payload) { return apiClient.post(`/recruitment/application/${applicationId}/interview`, payload).then(getResult) }
+export function downloadSubmittedResume(applicationId) { return apiClient.get(`/recruitment/application/${applicationId}/resume/download`, { responseType: 'blob' }) }
