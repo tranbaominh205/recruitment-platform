@@ -5,6 +5,7 @@ import com.tbm.recruitment.recruitment.dto.request.UpdateApplicationStatusReques
 import com.tbm.recruitment.recruitment.dto.response.ApiResponse;
 import com.tbm.recruitment.recruitment.dto.response.ApplicationResponse;
 import com.tbm.recruitment.recruitment.dto.response.PageResponse;
+import com.tbm.recruitment.recruitment.dto.response.SubmittedResumeContent;
 import com.tbm.recruitment.recruitment.exception.ErrorCode;
 import com.tbm.recruitment.recruitment.service.ApplicationService;
 import jakarta.validation.Valid;
@@ -12,7 +13,10 @@ import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -133,5 +137,23 @@ public class ApplicationController {
         .message(ErrorCode.SUCCESS.getMessage())
         .result(result)
         .build();
+  }
+
+  @GetMapping("/{applicationId}/resume/download")
+  public ResponseEntity<byte[]> downloadSubmittedResume(
+      @PathVariable UUID applicationId,
+      @RequestHeader(value = "X-Account-Id", required = false) String accountId,
+      @RequestHeader(value = "X-Account-Role", required = false) String accountRole) {
+
+    SubmittedResumeContent result =
+        applicationService.getSubmittedResumeContent(applicationId, accountId, accountRole);
+
+    return ResponseEntity.ok()
+        .header(
+            HttpHeaders.CONTENT_DISPOSITION,
+            ContentDisposition.attachment().filename(result.fileName()).build().toString())
+        .contentType(MediaType.parseMediaType(result.contentType()))
+        .contentLength(result.content().length)
+        .body(result.content());
   }
 }
