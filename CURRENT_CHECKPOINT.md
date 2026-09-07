@@ -10,7 +10,29 @@ Recruitment Platform Capstone
 
 Current phase:
 
-DAY 5 DONE / DAY 6 READY
+DAY 6 DONE / DAY 7 READY
+
+The frontend module now exists at `web-app/` and uses React + Vite + JavaScript
+with the Devteria-style `src/` organization (`components/`,
+`configurations/`, `pages/`, `routes/`, and `services/`). Authentication,
+Candidate P0, Recruiter P0, and the application-centric Recruiter
+submitted-resume download contract are implemented. Candidate and Recruiter
+notifications are now integrated through the protected frontend routes and the
+Gateway-backed notification API.
+
+The exact selected `resumeId` invariant is preserved for applications, and the
+Resume–Job matching architecture and behavior remain unchanged. The verified
+Day 6 baseline before final integration is
+`47ab89acf4bb664677d5fb330d3f99a0f06296bc`.
+
+Automated Maven tests, fully qualified Spotless checks, frontend lint/build,
+and the final live Candidate/Recruiter runtime regression have passed.
+
+Frontend lint completes with the five pre-existing Candidate warnings; no lint
+errors remain.
+
+Day 6 P0 frontend implementation is complete and the project is ready for
+Day 7 stabilization, demo preparation, and final report work.
 
 ---
 
@@ -1221,7 +1243,7 @@ Latest known Day 5 final implementation merge:
 
 `dc427fd2a7a479ee15a391639f30449cff229874` — feat: add AI match explanation
 
-This checkpoint reflects Day 5 DONE / Day 6 READY state.
+This checkpoint reflects Day 6 DONE / Day 7 READY state.
 
 Require the next chat to:
 
