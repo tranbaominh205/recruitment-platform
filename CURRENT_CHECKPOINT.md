@@ -38,7 +38,7 @@ Day 7 stabilization, demo preparation, and final report work.
 
 # 1. Critical Rule for the Next Chat
 
-Before generating any Day 6 implementation code:
+Before starting any Day 7 stabilization, demo, or report work:
 
 1. Read:
     - `MASTER_PROMPT.md`
@@ -53,7 +53,7 @@ Before generating any Day 6 implementation code:
     - use actual source to determine implementation state;
     - explicitly report the inconsistency;
     - do not silently rewrite frozen architecture/domain rules.
-6. Confirm Day 5 source state before starting Day 6.
+6. Confirm the current Day 6-complete source state before starting Day 7 work.
 7. Do not claim compile/test/runtime/Postman success without actual evidence.
 
 Known Day 3 final implementation merge:
@@ -1180,37 +1180,18 @@ Day 5 source-level scope is complete.
 
 ---
 
-# 23. Next Action — Day 6 Frontend
+# 23. Next Action — Day 7 Stabilization
 
-Before implementing any Day 6 React Frontend:
+Day 6 P0 implementation is complete. Day 7 is limited to stabilization, demo,
+and report support:
 
-1. audit the current state of `web-app` folder on main:
-   - whether frontend scaffold exists;
-   - whether any React / Vite setup already exists;
-   - whether API client libraries are already configured;
-2. read all five mandatory project files again;
-3. inspect actual GitHub `main` for Day 5 final state;
-4. if frontend does not exist:
-   - initialize new Vite + React project in `web-app`;
-   - configure Axios or similar for Gateway API communication;
-   - define API contract interfaces for P0 workflow;
-5. implement core Candidate UI:
-   - registration/login;
-   - profile management;
-   - resume upload;
-   - job search and apply;
-   - application tracking;
-6. implement core Recruiter UI:
-   - registration/login;
-   - company/employer management;
-   - job creation and publishing;
-   - application review;
-   - matching scores and explanation viewing;
-   - recruiter status transitions;
-   - interview scheduling;
-7. follow P0 workflow only; do not implement P1 UI features;
-8. one Day 6 STEP at a time;
-9. do not assume frontend build/runtime success without evidence.
+1. run final regression and quality checks;
+2. fix confirmed bugs only, with no speculative refactors;
+3. prepare demo data and the demonstrated end-to-end flow where needed;
+4. update README or run instructions where the existing project requires it;
+5. support final documentation and report work;
+6. preserve the frozen architecture and domain rules;
+7. do not redesign the architecture or expand into unnecessary P1 features.
 
 ---
 
@@ -1231,48 +1212,56 @@ Day 5 matching and AI are now complete at source level.
 
 ---
 
-# 25. Handoff Rule — Day 6 Frontier
+# 25. Handoff Rule — Day 7
 
-When starting a new chat for Day 6 React Frontend, provide:
-
-GitHub repository:
+Repository:
 
 `https://github.com/tranbaominh205/recruitment-platform`
 
-Latest known Day 5 final implementation merge:
+Verified final Day 6 merge:
 
-`dc427fd2a7a479ee15a391639f30449cff229874` — feat: add AI match explanation
+`6d71ceb19deaba9fd69ecdd2b121f934f0bceea2`
 
-This checkpoint reflects Day 6 DONE / Day 7 READY state.
+Current phase:
 
-Require the next chat to:
+DAY 6 DONE / DAY 7 READY
 
-1. read all five mandatory project files:
-   - `MASTER_PROMPT.md`
-   - `PROJECT_CONTEXT.md`
-   - `ARCHITECTURE.md`
-   - `DEVELOPMENT_GUIDE.md`
-   - `CURRENT_CHECKPOINT.md`
-2. inspect actual GitHub `main` and current backend implementation;
-3. treat source code on `main` as implementation truth;
-4. audit whether frontend already exists in `web-app`;
-5. inspect backend API contracts needed by frontend:
-   - Identity (register, login, current account)
-   - Candidate (profile, preferences)
-   - Employer (company)
-   - Job (create, publish, list, search, detail)
-   - Resume (upload, list, download)
-   - Recruitment (apply, track, status, interview)
-   - Matching (application match score and explanation)
-   - Notification (own notifications)
-6. implement only P0 workflow:
-   - core Candidate UI (register → profile → upload resume → search job → apply → track)
-   - core Recruiter UI (register → company → create job → review applications → match score → status transition → schedule interview)
-7. implement one Day 6 STEP at a time;
-8. follow all 16 sections required by `MASTER_PROMPT.md` for every step;
-9. use Postman/API evidence already recorded in checkpoint only as reference;
-10. do not claim fresh runtime/build success without actual evidence.
+The following are already implemented and must not be reimplemented in the
+next chat:
 
-The new chat must not rely on memory from previous chats.
+- React + Vite `web-app`;
+- authentication;
+- Candidate P0;
+- Recruiter P0;
+- exact selected `resumeId` application flow;
+- recruiter exact submitted Resume access;
+- deterministic Resume <-> Job matching;
+- AI explanation as decision support only;
+- application status transitions;
+- interview scheduling;
+- Candidate and Recruiter notifications.
 
-Each Day 6 STEP must include complete, working frontend code.
+The next chat must still read all five mandatory project files, inspect actual
+GitHub `main`, treat source as implementation truth, report any
+documentation/source inconsistency, and not rely on previous chat memory.
+It must not claim test or runtime evidence without actual evidence.
+
+The frozen rules remain in force:
+
+- CandidateProfile != Resume;
+- an Application stores the exact selected `resumeId`;
+- recruiter matching is Resume <-> Job;
+- Candidate preferences do not enter recruiter matching;
+- deterministic matching weights remain 55/25/10/5/5;
+- AI cannot auto-hire or auto-reject;
+- AI cannot mutate Application status;
+- the Gateway authenticates;
+- the owning service authorizes;
+- no direct cross-service database access;
+- no Elasticsearch in P0.
+
+The next chat must not reimplement Day 6. Day 7 work is limited to confirmed
+bug fixes, final regression and stabilization, demo data and flow preparation,
+README or run-instruction updates where needed, final documentation/report
+support, and final quality checks. No architecture redesign or unnecessary
+feature expansion is permitted.
