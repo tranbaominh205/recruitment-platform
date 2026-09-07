@@ -328,6 +328,14 @@ select {
   padding: 1.1rem 1.25rem;
 }
 
+.notification-item {
+  align-items: flex-start;
+}
+
+.notification-unread {
+  border-left: 3px solid #0f6b62;
+}
+
 .list-item p {
   color: #5b706b;
   font-size: 0.88rem;

@@ -7,6 +7,7 @@ import CandidateJobDetailPage from '../pages/CandidateJobDetailPage'
 import CandidateJobsPage from '../pages/CandidateJobsPage'
 import CandidateProfilePage from '../pages/CandidateProfilePage'
 import CandidateResumesPage from '../pages/CandidateResumesPage'
+import NotificationsPage from '../pages/NotificationsPage'
 import CandidateLayout from '../components/CandidateLayout'
 import RecruiterLayout from '../components/RecruiterLayout'
 import HomePage from '../pages/HomePage'
@@ -38,6 +39,7 @@ function AppRoutes() {
               <Route path="jobs/:jobId" element={<CandidateJobDetailPage />} />
               <Route path="applications" element={<CandidateApplicationsPage />} />
               <Route path="applications/:applicationId" element={<CandidateApplicationDetailPage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
             </Route>
           </Route>
           <Route element={<ProtectedRoute allowedRole="RECRUITER" />}>
@@ -50,6 +52,7 @@ function AppRoutes() {
               <Route path="jobs/:jobId" element={<RecruiterJobDetailPage />} />
               <Route path="jobs/:jobId/applications" element={<RecruiterApplicationsPage />} />
               <Route path="applications/:applicationId" element={<RecruiterApplicationDetailPage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
             </Route>
           </Route>
         </Routes>
