@@ -6,6 +6,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
@@ -18,8 +19,14 @@ public class JwtService {
   private final JwtEncoder jwtEncoder;
   private final JwtDecoder jwtDecoder;
 
+  @Qualifier("refreshJwtDecoder")
+  private final JwtDecoder refreshJwtDecoder;
+
   @Value("${security.jwt.access-token-expiration}")
   private long accessTokenExpiration;
+
+  @Value("${security.jwt.refreshable-duration}")
+  private long refreshableDuration;
 
   public String generateAccessToken(Account account) {
 
@@ -55,5 +62,21 @@ public class JwtService {
     } catch (Exception exception) {
       return Optional.empty();
     }
+  }
+
+  public Optional<Jwt> decodeRefreshableToken(String token) {
+    if (token == null || token.isBlank()) {
+      return Optional.empty();
+    }
+
+    try {
+      return Optional.of(refreshJwtDecoder.decode(token));
+    } catch (Exception exception) {
+      return Optional.empty();
+    }
+  }
+
+  public long getRefreshableDurationSeconds() {
+    return refreshableDuration;
   }
 }
