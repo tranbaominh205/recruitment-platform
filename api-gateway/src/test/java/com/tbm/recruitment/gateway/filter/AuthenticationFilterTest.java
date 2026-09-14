@@ -67,6 +67,26 @@ class AuthenticationFilterTest {
   }
 
   @Test
+  void logoutEndpointBypassesIntrospectionWhenAuthorizationHeaderPresent() {
+    MockServerHttpRequest request =
+        MockServerHttpRequest.method(HttpMethod.POST, "/api/v1/identity/auth/logout")
+            .header("Authorization", "Bearer expired-but-refreshable-token")
+            .build();
+    MockServerWebExchange exchange = MockServerWebExchange.from(request);
+    AtomicBoolean chainCalled = new AtomicBoolean(false);
+    GatewayFilterChain chain =
+        gatewayExchange -> {
+          chainCalled.set(true);
+          return Mono.empty();
+        };
+
+    authenticationFilter.filter(exchange, chain).block();
+
+    assertTrue(chainCalled.get());
+    verifyNoInteractions(identityClient);
+  }
+
+  @Test
   void protectedIdentityEndpointRemainsProtectedWithoutAuthorizationHeader() {
     MockServerHttpRequest request =
         MockServerHttpRequest.method(HttpMethod.GET, "/api/v1/identity/me").build();

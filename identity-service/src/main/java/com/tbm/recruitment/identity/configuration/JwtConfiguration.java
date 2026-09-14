@@ -12,6 +12,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
@@ -30,7 +31,10 @@ public class JwtConfiguration {
 
   @Bean
   JwtDecoder jwtDecoder(SecretKey secretKey) {
-    return NimbusJwtDecoder.withSecretKey(secretKey).macAlgorithm(MacAlgorithm.HS256).build();
+    NimbusJwtDecoder jwtDecoder =
+        NimbusJwtDecoder.withSecretKey(secretKey).macAlgorithm(MacAlgorithm.HS256).build();
+    jwtDecoder.setJwtValidator(JwtValidators.createDefaultWithIssuer("identity-service"));
+    return jwtDecoder;
   }
 
   @Bean

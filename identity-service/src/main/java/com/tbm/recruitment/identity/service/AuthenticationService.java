@@ -129,7 +129,7 @@ public class AuthenticationService {
       throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
 
-    Optional<Jwt> decodedToken = jwtService.decodeToken(token);
+    Optional<Jwt> decodedToken = jwtService.decodeRefreshableToken(token);
     if (decodedToken.isEmpty()) {
       throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
@@ -144,6 +144,9 @@ public class AuthenticationService {
     }
 
     Instant refreshableUntil = issuedAt.plusSeconds(jwtService.getRefreshableDurationSeconds());
+    if (!Instant.now().isBefore(refreshableUntil)) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
 
     if (invalidatedTokenRepository.existsById(jti)) {
       return;

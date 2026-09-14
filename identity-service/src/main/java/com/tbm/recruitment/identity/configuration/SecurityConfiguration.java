@@ -31,6 +31,7 @@ public class SecurityConfiguration {
                         "/identity/auth/login",
                         "/identity/auth/introspect",
                         "/identity/auth/refresh",
+                        "/identity/auth/logout",
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html")
