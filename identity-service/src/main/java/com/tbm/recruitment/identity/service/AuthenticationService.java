@@ -2,6 +2,7 @@ package com.tbm.recruitment.identity.service;
 
 import com.tbm.recruitment.identity.dto.request.IntrospectRequest;
 import com.tbm.recruitment.identity.dto.request.LoginRequest;
+import com.tbm.recruitment.identity.dto.request.RefreshRequest;
 import com.tbm.recruitment.identity.dto.request.RegisterRequest;
 import com.tbm.recruitment.identity.dto.response.AccountResponse;
 import com.tbm.recruitment.identity.dto.response.IntrospectResponse;
@@ -22,6 +23,7 @@ import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
@@ -134,17 +136,81 @@ public class AuthenticationService {
 
     Jwt jwt = decodedToken.get();
     String jti = jwt.getId();
+    Instant issuedAt = jwt.getIssuedAt();
     Instant expiresAt = jwt.getExpiresAt();
 
-    if (jti == null || jti.isBlank() || expiresAt == null) {
+    if (jti == null || jti.isBlank() || issuedAt == null || expiresAt == null) {
       throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
+
+    Instant refreshableUntil = issuedAt.plusSeconds(jwtService.getRefreshableDurationSeconds());
 
     if (invalidatedTokenRepository.existsById(jti)) {
       return;
     }
 
-    invalidatedTokenRepository.save(new InvalidatedToken(jti, expiresAt));
+    try {
+      invalidatedTokenRepository.save(new InvalidatedToken(jti, refreshableUntil));
+    } catch (DataIntegrityViolationException exception) {
+      // Idempotent behavior for concurrent logout calls with the same token.
+      return;
+    }
+  }
+
+  @Transactional
+  public LoginResponse refresh(RefreshRequest request) {
+    Optional<Jwt> decodedToken = jwtService.decodeRefreshableToken(request.token());
+    if (decodedToken.isEmpty()) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
+    Jwt jwt = decodedToken.get();
+    String jti = jwt.getId();
+    Instant issuedAt = jwt.getIssuedAt();
+    Instant expiresAt = jwt.getExpiresAt();
+    String subject = jwt.getSubject();
+
+    if (jti == null || jti.isBlank() || issuedAt == null || expiresAt == null) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
+    if (subject == null || subject.isBlank()) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
+    UUID accountId;
+    try {
+      accountId = UUID.fromString(subject);
+    } catch (IllegalArgumentException exception) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
+    Instant refreshableUntil = issuedAt.plusSeconds(jwtService.getRefreshableDurationSeconds());
+    if (!Instant.now().isBefore(refreshableUntil)) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
+    if (invalidatedTokenRepository.existsById(jti)) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
+    Account account =
+        accountRepository
+            .findById(accountId)
+            .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+
+    if (!account.isEnabled()) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
+    try {
+      invalidatedTokenRepository.save(new InvalidatedToken(jti, refreshableUntil));
+    } catch (DataIntegrityViolationException exception) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
+    String accessToken = jwtService.generateAccessToken(account);
+    return new LoginResponse(accessToken, "Bearer", jwtService.getAccessTokenExpirationSeconds());
   }
 
   private String extractBearerToken(String authorizationHeader) {

@@ -2,6 +2,7 @@ package com.tbm.recruitment.identity.controller;
 
 import com.tbm.recruitment.identity.dto.request.IntrospectRequest;
 import com.tbm.recruitment.identity.dto.request.LoginRequest;
+import com.tbm.recruitment.identity.dto.request.RefreshRequest;
 import com.tbm.recruitment.identity.dto.request.RegisterRequest;
 import com.tbm.recruitment.identity.dto.response.AccountResponse;
 import com.tbm.recruitment.identity.dto.response.ApiResponse;
@@ -64,6 +65,16 @@ public class AuthenticationController {
     return ApiResponse.<Void>builder()
         .code(ErrorCode.SUCCESS.getCode())
         .message(ErrorCode.SUCCESS.getMessage())
+        .build();
+  }
+
+  @PostMapping("/refresh")
+  public ApiResponse<LoginResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+
+    return ApiResponse.<LoginResponse>builder()
+        .code(ErrorCode.SUCCESS.getCode())
+        .message(ErrorCode.SUCCESS.getMessage())
+        .result(authenticationService.refresh(request))
         .build();
   }
 }

@@ -27,6 +27,7 @@ security:
   jwt:
     signer-key: ${JWT_SIGNER_KEY}
     access-token-expiration: 3600
+    refreshable-duration: 604800
 
 springdoc:
   api-docs:

@@ -36,7 +36,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
   static Set<String> PUBLIC_GET_ENDPOINTS = Set.of("/identity/health", "/job/search");
 
   static Set<String> PUBLIC_POST_ENDPOINTS =
-      Set.of("/identity/auth/register", "/identity/auth/login");
+      Set.of("/identity/auth/register", "/identity/auth/login", "/identity/auth/refresh");
 
   IdentityClient identityClient;
 
