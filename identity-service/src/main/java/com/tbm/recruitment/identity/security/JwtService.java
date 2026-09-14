@@ -41,6 +41,7 @@ public class JwtService {
             .subject(account.getId().toString())
             .claim("email", account.getEmail())
             .claim("role", account.getRole().name())
+            .claim("tokenVersion", account.getTokenVersion())
             .build();
 
     JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();

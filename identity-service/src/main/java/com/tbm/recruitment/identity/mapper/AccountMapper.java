@@ -12,6 +12,7 @@ public interface AccountMapper {
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "passwordHash", ignore = true)
   @Mapping(target = "enabled", ignore = true)
+  @Mapping(target = "tokenVersion", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
   Account toAccount(RegisterRequest request);
 

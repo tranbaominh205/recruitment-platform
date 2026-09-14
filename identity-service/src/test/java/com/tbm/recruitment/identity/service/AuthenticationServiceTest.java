@@ -100,7 +100,7 @@ class AuthenticationServiceTest {
   @Test
   void loginExpiresInMatchesConfiguredAccessTokenExpiration() {
     Account account =
-        buildAccount(UUID.randomUUID(), "candidate@example.com", Role.CANDIDATE, true);
+        buildAccount(UUID.randomUUID(), "candidate@example.com", Role.CANDIDATE, true, 0L);
 
     when(accountRepository.findByEmailIgnoreCase("candidate@example.com"))
         .thenReturn(Optional.of(account));
@@ -116,7 +116,7 @@ class AuthenticationServiceTest {
   @Test
   void introspectReturnsAccountValuesForValidEnabledAccount() {
     UUID accountId = UUID.randomUUID();
-    Account account = buildAccount(accountId, "db-account@example.com", Role.RECRUITER, true);
+    Account account = buildAccount(accountId, "db-account@example.com", Role.RECRUITER, true, 0L);
     String token =
         issueToken(
             "valid-account-jti",
@@ -163,7 +163,7 @@ class AuthenticationServiceTest {
     Instant expiresAt = Instant.now().plusSeconds(1800);
     String oldToken =
         issueToken("refresh-jti-1", accountId.toString(), issuedAt, expiresAt, "identity-service");
-    Account account = buildAccount(accountId, "refresh@example.com", Role.CANDIDATE, true);
+    Account account = buildAccount(accountId, "refresh@example.com", Role.CANDIDATE, true, 0L);
 
     when(invalidatedTokenRepository.existsById("refresh-jti-1")).thenReturn(false);
     when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
@@ -201,7 +201,8 @@ class AuthenticationServiceTest {
     String token =
         issueToken(
             "refresh-expired-jti", accountId.toString(), issuedAt, expiresAt, "identity-service");
-    Account account = buildAccount(accountId, "expired-refresh@example.com", Role.CANDIDATE, true);
+    Account account =
+        buildAccount(accountId, "expired-refresh@example.com", Role.CANDIDATE, true, 0L);
 
     when(invalidatedTokenRepository.existsById("refresh-expired-jti")).thenReturn(false);
     when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
@@ -241,7 +242,7 @@ class AuthenticationServiceTest {
             Instant.now().minusSeconds(60),
             Instant.now().plusSeconds(300),
             "identity-service");
-    Account account = buildAccount(accountId, "one-time@example.com", Role.CANDIDATE, true);
+    Account account = buildAccount(accountId, "one-time@example.com", Role.CANDIDATE, true, 0L);
     Set<String> invalidated = new HashSet<>();
 
     when(invalidatedTokenRepository.existsById(anyString()))
@@ -295,7 +296,7 @@ class AuthenticationServiceTest {
             Instant.now().plusSeconds(300),
             "identity-service");
     Account disabledAccount =
-        buildAccount(accountId, "disabled@example.com", Role.CANDIDATE, false);
+        buildAccount(accountId, "disabled@example.com", Role.CANDIDATE, false, 0L);
 
     when(invalidatedTokenRepository.existsById("disabled-account-jti")).thenReturn(false);
     when(accountRepository.findById(accountId)).thenReturn(Optional.of(disabledAccount));
@@ -398,7 +399,7 @@ class AuthenticationServiceTest {
             Instant.now().minusSeconds(60),
             Instant.now().plusSeconds(300),
             "identity-service");
-    Account account = buildAccount(accountId, "duplicate@example.com", Role.CANDIDATE, true);
+    Account account = buildAccount(accountId, "duplicate@example.com", Role.CANDIDATE, true, 0L);
 
     when(invalidatedTokenRepository.existsById("duplicate-jti")).thenReturn(false);
     when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
@@ -562,18 +563,101 @@ class AuthenticationServiceTest {
     assertFalse(response.valid());
   }
 
-  private Account buildAccount(UUID accountId, String email, Role role, boolean enabled) {
+  @Test
+  void introspectReturnsFalseWhenTokenVersionMissingNonNumericOrMismatched() {
+    UUID accountId = UUID.randomUUID();
+    Account account = buildAccount(accountId, "versioned@example.com", Role.CANDIDATE, true, 3L);
+
+    String missingTokenVersionClaimToken =
+        issueTokenWithoutTokenVersion(
+            "missing-token-version-jti",
+            accountId.toString(),
+            Instant.now().minusSeconds(30),
+            Instant.now().plusSeconds(300),
+            "identity-service");
+
+    when(invalidatedTokenRepository.existsById("missing-token-version-jti")).thenReturn(false);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+
+    IntrospectResponse missingClaimResponse =
+        authenticationService.introspect(new IntrospectRequest(missingTokenVersionClaimToken));
+    assertFalse(missingClaimResponse.valid());
+
+    String nonNumericTokenVersionClaimToken =
+        issueTokenWithTokenVersion(
+            "non-numeric-token-version-jti",
+            accountId.toString(),
+            Instant.now().minusSeconds(30),
+            Instant.now().plusSeconds(300),
+            "identity-service",
+            "not-a-number");
+
+    when(invalidatedTokenRepository.existsById("non-numeric-token-version-jti")).thenReturn(false);
+
+    IntrospectResponse nonNumericClaimResponse =
+        authenticationService.introspect(new IntrospectRequest(nonNumericTokenVersionClaimToken));
+    assertFalse(nonNumericClaimResponse.valid());
+
+    String mismatchTokenVersionClaimToken =
+        issueTokenWithTokenVersion(
+            "mismatch-token-version-jti",
+            accountId.toString(),
+            Instant.now().minusSeconds(30),
+            Instant.now().plusSeconds(300),
+            "identity-service",
+            1L);
+
+    when(invalidatedTokenRepository.existsById("mismatch-token-version-jti")).thenReturn(false);
+
+    IntrospectResponse mismatchClaimResponse =
+        authenticationService.introspect(new IntrospectRequest(mismatchTokenVersionClaimToken));
+    assertFalse(mismatchClaimResponse.valid());
+  }
+
+  @Test
+  void refreshFailsForTokenVersionMismatchBeforeRevocationOrNewTokenIssue() {
+    UUID accountId = UUID.randomUUID();
+    Account account =
+        buildAccount(accountId, "refresh-version@example.com", Role.CANDIDATE, true, 2L);
+    String token =
+        issueTokenWithTokenVersion(
+            "refresh-version-mismatch-jti",
+            accountId.toString(),
+            Instant.now().minusSeconds(60),
+            Instant.now().plusSeconds(300),
+            "identity-service",
+            1L);
+
+    when(invalidatedTokenRepository.existsById("refresh-version-mismatch-jti")).thenReturn(false);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+
+    AppException exception =
+        assertThrows(
+            AppException.class, () -> authenticationService.refresh(new RefreshRequest(token)));
+    assertEquals(ErrorCode.UNAUTHENTICATED, exception.getErrorCode());
+    verify(invalidatedTokenRepository, never()).saveAndFlush(any(InvalidatedToken.class));
+    verify(jwtService, never()).generateAccessToken(any(Account.class));
+  }
+
+  private Account buildAccount(
+      UUID accountId, String email, Role role, boolean enabled, long tokenVersion) {
     return Account.builder()
         .id(accountId)
         .email(email)
         .passwordHash(passwordEncoder.encode("secret123"))
         .role(role)
         .enabled(enabled)
+        .tokenVersion(tokenVersion)
         .createdAt(Instant.now())
         .build();
   }
 
   private String issueToken(
+      String jti, String subject, Instant issuedAt, Instant expiresAt, String issuer) {
+    return issueTokenWithTokenVersion(jti, subject, issuedAt, expiresAt, issuer, 0L);
+  }
+
+  private String issueTokenWithoutTokenVersion(
       String jti, String subject, Instant issuedAt, Instant expiresAt, String issuer) {
     JwtClaimsSet.Builder claimsBuilder =
         JwtClaimsSet.builder()
@@ -581,6 +665,40 @@ class AuthenticationServiceTest {
             .issuer(issuer)
             .claim("email", "token-claim@example.com")
             .claim("role", Role.CANDIDATE.name());
+
+    if (jti != null) {
+      claimsBuilder.id(jti);
+    }
+
+    if (issuedAt != null) {
+      claimsBuilder.issuedAt(issuedAt);
+    }
+
+    if (expiresAt != null) {
+      claimsBuilder.expiresAt(expiresAt);
+    }
+
+    return jwtEncoder
+        .encode(
+            JwtEncoderParameters.from(
+                JwsHeader.with(MacAlgorithm.HS256).build(), claimsBuilder.build()))
+        .getTokenValue();
+  }
+
+  private String issueTokenWithTokenVersion(
+      String jti,
+      String subject,
+      Instant issuedAt,
+      Instant expiresAt,
+      String issuer,
+      Object tokenVersionClaim) {
+    JwtClaimsSet.Builder claimsBuilder =
+        JwtClaimsSet.builder()
+            .subject(subject)
+            .issuer(issuer)
+            .claim("email", "token-claim@example.com")
+            .claim("role", Role.CANDIDATE.name())
+            .claim("tokenVersion", tokenVersionClaim);
 
     if (jti != null) {
       claimsBuilder.id(jti);

@@ -118,6 +118,10 @@ public class AuthenticationService {
       return new IntrospectResponse(false, null, null, null);
     }
 
+    if (!isTokenVersionMatched(jwt, account)) {
+      return new IntrospectResponse(false, null, null, null);
+    }
+
     return new IntrospectResponse(
         true, account.getId().toString(), account.getEmail(), account.getRole().name());
   }
@@ -206,6 +210,10 @@ public class AuthenticationService {
       throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
 
+    if (!isTokenVersionMatched(jwt, account)) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
     try {
       invalidatedTokenRepository.saveAndFlush(new InvalidatedToken(jti, refreshableUntil));
     } catch (DataIntegrityViolationException exception) {
@@ -228,5 +236,36 @@ public class AuthenticationService {
 
     String token = trimmedHeader.substring("Bearer ".length()).trim();
     return token.isEmpty() ? null : token;
+  }
+
+  private boolean isTokenVersionMatched(Jwt jwt, Account account) {
+    Long accountTokenVersion = account.getTokenVersion();
+    Long tokenVersion = parseTokenVersionClaim(jwt.getClaims().get("tokenVersion"));
+    return accountTokenVersion != null
+        && tokenVersion != null
+        && accountTokenVersion.equals(tokenVersion);
+  }
+
+  private Long parseTokenVersionClaim(Object tokenVersionClaim) {
+    if (tokenVersionClaim == null) {
+      return null;
+    }
+
+    if (tokenVersionClaim instanceof Number number) {
+      if (number.doubleValue() != (double) number.longValue()) {
+        return null;
+      }
+      return number.longValue();
+    }
+
+    if (tokenVersionClaim instanceof String value) {
+      try {
+        return Long.parseLong(value);
+      } catch (NumberFormatException exception) {
+        return null;
+      }
+    }
+
+    return null;
   }
 }

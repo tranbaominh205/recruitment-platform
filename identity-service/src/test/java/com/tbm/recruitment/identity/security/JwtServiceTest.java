@@ -59,6 +59,7 @@ class JwtServiceTest {
             .passwordHash("hashed")
             .role(Role.CANDIDATE)
             .enabled(true)
+            .tokenVersion(2L)
             .createdAt(Instant.now())
             .build();
 
@@ -68,6 +69,7 @@ class JwtServiceTest {
     assertEquals(accountId.toString(), jwt.getSubject());
     assertEquals("candidate@example.com", jwt.getClaimAsString("email"));
     assertEquals(Role.CANDIDATE.name(), jwt.getClaimAsString("role"));
+    assertEquals(2L, ((Number) jwt.getClaims().get("tokenVersion")).longValue());
     assertNotNull(jwt.getId());
     assertFalse(jwt.getId().isBlank());
     assertNotNull(jwt.getExpiresAt());
@@ -83,6 +85,7 @@ class JwtServiceTest {
             .passwordHash("hashed")
             .role(Role.CANDIDATE)
             .enabled(true)
+            .tokenVersion(0L)
             .createdAt(Instant.now())
             .build();
 

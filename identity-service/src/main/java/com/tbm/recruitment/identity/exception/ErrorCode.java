@@ -21,6 +21,7 @@ public enum ErrorCode {
   UNAUTHORIZED(1007, "Unauthorized", HttpStatus.FORBIDDEN),
 
   ACCOUNT_DISABLED(1008, "Account is disabled", HttpStatus.FORBIDDEN),
+  INVALID_CURRENT_PASSWORD(1009, "Current password is incorrect", HttpStatus.BAD_REQUEST),
 
   INTERNAL_SERVER_ERROR(9999, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
 
