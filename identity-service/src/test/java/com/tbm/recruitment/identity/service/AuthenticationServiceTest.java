@@ -9,7 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,6 +41,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -74,7 +78,7 @@ class AuthenticationServiceTest {
         .setJwtValidator(
             new org.springframework.security.oauth2.jwt.JwtIssuerValidator("identity-service"));
 
-    jwtService = new JwtService(jwtEncoder, jwtDecoder, refreshJwtDecoder);
+    jwtService = spy(new JwtService(jwtEncoder, jwtDecoder, refreshJwtDecoder));
     ReflectionTestUtils.setField(jwtService, "accessTokenExpiration", 7200L);
     ReflectionTestUtils.setField(jwtService, "refreshableDuration", 604800L);
 
@@ -160,13 +164,13 @@ class AuthenticationServiceTest {
 
     when(invalidatedTokenRepository.existsById("refresh-jti-1")).thenReturn(false);
     when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
-    when(invalidatedTokenRepository.save(any(InvalidatedToken.class)))
+    when(invalidatedTokenRepository.saveAndFlush(any(InvalidatedToken.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     LoginResponse response = authenticationService.refresh(new RefreshRequest(oldToken));
 
     verify(invalidatedTokenRepository)
-        .save(
+        .saveAndFlush(
             argThat(
                 token ->
                     token.getId().equals("refresh-jti-1")
@@ -174,6 +178,9 @@ class AuthenticationServiceTest {
                             == issuedAt
                                 .plusSeconds(jwtService.getRefreshableDurationSeconds())
                                 .getEpochSecond()));
+    InOrder inOrder = inOrder(invalidatedTokenRepository, jwtService);
+    inOrder.verify(invalidatedTokenRepository).saveAndFlush(any(InvalidatedToken.class));
+    inOrder.verify(jwtService).generateAccessToken(account);
 
     assertEquals("Bearer", response.tokenType());
     assertEquals(7200L, response.expiresIn());
@@ -195,7 +202,7 @@ class AuthenticationServiceTest {
 
     when(invalidatedTokenRepository.existsById("refresh-expired-jti")).thenReturn(false);
     when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
-    when(invalidatedTokenRepository.save(any(InvalidatedToken.class)))
+    when(invalidatedTokenRepository.saveAndFlush(any(InvalidatedToken.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     LoginResponse response = authenticationService.refresh(new RefreshRequest(token));
@@ -236,7 +243,7 @@ class AuthenticationServiceTest {
 
     when(invalidatedTokenRepository.existsById(anyString()))
         .thenAnswer(invocation -> invalidated.contains(invocation.getArgument(0)));
-    when(invalidatedTokenRepository.save(any(InvalidatedToken.class)))
+    when(invalidatedTokenRepository.saveAndFlush(any(InvalidatedToken.class)))
         .thenAnswer(
             invocation -> {
               InvalidatedToken saved = invocation.getArgument(0);
@@ -392,13 +399,14 @@ class AuthenticationServiceTest {
 
     when(invalidatedTokenRepository.existsById("duplicate-jti")).thenReturn(false);
     when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
-    when(invalidatedTokenRepository.save(any(InvalidatedToken.class)))
+    when(invalidatedTokenRepository.saveAndFlush(any(InvalidatedToken.class)))
         .thenThrow(new DataIntegrityViolationException("duplicate"));
 
     AppException exception =
         assertThrows(
             AppException.class, () -> authenticationService.refresh(new RefreshRequest(token)));
     assertEquals(ErrorCode.UNAUTHENTICATED, exception.getErrorCode());
+    verify(jwtService, never()).generateAccessToken(any(Account.class));
   }
 
   @Test

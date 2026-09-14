@@ -204,7 +204,7 @@ public class AuthenticationService {
     }
 
     try {
-      invalidatedTokenRepository.save(new InvalidatedToken(jti, refreshableUntil));
+      invalidatedTokenRepository.saveAndFlush(new InvalidatedToken(jti, refreshableUntil));
     } catch (DataIntegrityViolationException exception) {
       throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
