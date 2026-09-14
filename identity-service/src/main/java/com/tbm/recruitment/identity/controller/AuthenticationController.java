@@ -54,4 +54,16 @@ public class AuthenticationController {
         .result(authenticationService.introspect(request))
         .build();
   }
+
+  @PostMapping("/logout")
+  public ApiResponse<Void> logout(
+      @RequestHeader(value = "Authorization", required = false) String authorization) {
+
+    authenticationService.logout(authorization);
+
+    return ApiResponse.<Void>builder()
+        .code(ErrorCode.SUCCESS.getCode())
+        .message(ErrorCode.SUCCESS.getMessage())
+        .build();
+  }
 }
