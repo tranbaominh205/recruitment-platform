@@ -20,6 +20,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -35,6 +36,8 @@ class JwtServiceTest {
     SecretKey secretKey =
         new SecretKeySpec("0123456789abcdef0123456789abcdef".getBytes(), "HmacSHA256");
     jwtDecoder = NimbusJwtDecoder.withSecretKey(secretKey).macAlgorithm(MacAlgorithm.HS256).build();
+    ((NimbusJwtDecoder) jwtDecoder)
+        .setJwtValidator(JwtValidators.createDefaultWithIssuer("identity-service"));
     JwtDecoder refreshJwtDecoder =
         NimbusJwtDecoder.withSecretKey(secretKey).macAlgorithm(MacAlgorithm.HS256).build();
     ((NimbusJwtDecoder) refreshJwtDecoder)
@@ -107,6 +110,25 @@ class JwtServiceTest {
             .getTokenValue();
 
     assertTrue(jwtService.decodeToken(expiredToken).isEmpty());
+  }
+
+  @Test
+  void strictDecodeRejectsWrongIssuer() {
+    String tokenWithWrongIssuer =
+        jwtEncoder
+            .encode(
+                JwtEncoderParameters.from(
+                    JwsHeader.with(MacAlgorithm.HS256).build(),
+                    JwtClaimsSet.builder()
+                        .id("strict-wrong-issuer-jti")
+                        .issuer("another-issuer")
+                        .issuedAt(Instant.now())
+                        .expiresAt(Instant.now().plus(1, ChronoUnit.HOURS))
+                        .subject(UUID.randomUUID().toString())
+                        .build()))
+            .getTokenValue();
+
+    assertTrue(jwtService.decodeToken(tokenWithWrongIssuer).isEmpty());
   }
 
   @Test

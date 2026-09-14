@@ -52,6 +52,7 @@ import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -72,6 +73,8 @@ class AuthenticationServiceTest {
     jwtEncoder = NimbusJwtEncoder.withSecretKey(secretKey).build();
     JwtDecoder jwtDecoder =
         NimbusJwtDecoder.withSecretKey(secretKey).macAlgorithm(MacAlgorithm.HS256).build();
+    ((NimbusJwtDecoder) jwtDecoder)
+        .setJwtValidator(JwtValidators.createDefaultWithIssuer("identity-service"));
     JwtDecoder refreshJwtDecoder =
         NimbusJwtDecoder.withSecretKey(secretKey).macAlgorithm(MacAlgorithm.HS256).build();
     ((NimbusJwtDecoder) refreshJwtDecoder)
@@ -438,6 +441,49 @@ class AuthenticationServiceTest {
   }
 
   @Test
+  void expiredAccessTokenInsideRefreshWindowCanLogoutSuccessfully() {
+    Instant issuedAt = Instant.now().minus(2, ChronoUnit.HOURS);
+    String token =
+        issueToken(
+            "logout-refreshable-expired-jti",
+            UUID.randomUUID().toString(),
+            issuedAt,
+            Instant.now().minus(1, ChronoUnit.HOURS),
+            "identity-service");
+
+    when(invalidatedTokenRepository.existsById("logout-refreshable-expired-jti")).thenReturn(false);
+
+    authenticationService.logout("Bearer " + token);
+
+    verify(invalidatedTokenRepository)
+        .save(
+            argThat(
+                invalidatedToken ->
+                    invalidatedToken.getId().equals("logout-refreshable-expired-jti")
+                        && invalidatedToken.getExpiresAt().getEpochSecond()
+                            == issuedAt
+                                .plusSeconds(jwtService.getRefreshableDurationSeconds())
+                                .getEpochSecond()));
+  }
+
+  @Test
+  void logoutFailsWhenRefreshWindowExpired() {
+    Instant issuedAt = Instant.now().minusSeconds(jwtService.getRefreshableDurationSeconds() + 1);
+    String token =
+        issueToken(
+            "logout-expired-window-jti",
+            UUID.randomUUID().toString(),
+            issuedAt,
+            Instant.now().minusSeconds(10),
+            "identity-service");
+
+    AppException exception =
+        assertThrows(AppException.class, () -> authenticationService.logout("Bearer " + token));
+    assertEquals(ErrorCode.UNAUTHENTICATED, exception.getErrorCode());
+    verify(invalidatedTokenRepository, never()).save(any(InvalidatedToken.class));
+  }
+
+  @Test
   void tokenLoggedOutCannotRefresh() {
     UUID accountId = UUID.randomUUID();
     Instant issuedAt = Instant.now().minusSeconds(120);
@@ -497,6 +543,21 @@ class AuthenticationServiceTest {
   void introspectReturnsFalseForMalformedOrInvalidToken() {
     IntrospectResponse response =
         authenticationService.introspect(new IntrospectRequest("this-is-not-valid-jwt"));
+
+    assertFalse(response.valid());
+  }
+
+  @Test
+  void introspectReturnsFalseForExpiredToken() {
+    String token =
+        issueToken(
+            "expired-introspect-jti",
+            UUID.randomUUID().toString(),
+            Instant.now().minus(2, ChronoUnit.HOURS),
+            Instant.now().minus(1, ChronoUnit.HOURS),
+            "identity-service");
+
+    IntrospectResponse response = authenticationService.introspect(new IntrospectRequest(token));
 
     assertFalse(response.valid());
   }

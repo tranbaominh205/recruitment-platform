@@ -37,6 +37,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
   static Set<String> PUBLIC_POST_ENDPOINTS =
       Set.of("/identity/auth/register", "/identity/auth/login", "/identity/auth/refresh");
+  static Set<String> NO_INTROSPECTION_POST_ENDPOINTS = Set.of("/identity/auth/logout");
 
   IdentityClient identityClient;
 
@@ -53,6 +54,10 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
     if (token == null) {
       return writeError(exchange.getResponse(), GatewayErrorCode.UNAUTHENTICATED);
+    }
+
+    if (shouldBypassIntrospection(request)) {
+      return chain.filter(exchange);
     }
 
     return identityClient
@@ -119,6 +124,15 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     }
 
     return path;
+  }
+
+  private boolean shouldBypassIntrospection(ServerHttpRequest request) {
+    if (request.getMethod() != HttpMethod.POST) {
+      return false;
+    }
+
+    String downstreamPath = removeApiPrefix(request.getURI().getPath());
+    return NO_INTROSPECTION_POST_ENDPOINTS.contains(downstreamPath);
   }
 
   private String extractBearerToken(ServerHttpRequest request) {
