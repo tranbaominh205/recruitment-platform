@@ -14,10 +14,13 @@ import com.tbm.recruitment.identity.mapper.AccountMapper;
 import com.tbm.recruitment.identity.repository.AccountRepository;
 import com.tbm.recruitment.identity.security.JwtService;
 import java.util.Locale;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,10 +78,32 @@ public class AuthenticationService {
 
     String accessToken = jwtService.generateAccessToken(account);
 
-    return new LoginResponse(accessToken, "Bearer", 3600);
+    return new LoginResponse(accessToken, "Bearer", jwtService.getAccessTokenExpirationSeconds());
   }
 
+  @Transactional(readOnly = true)
   public IntrospectResponse introspect(IntrospectRequest request) {
-    return jwtService.introspect(request.token());
+    Optional<Jwt> decodedToken = jwtService.decodeToken(request.token());
+    if (decodedToken.isEmpty()) {
+      return new IntrospectResponse(false, null, null, null);
+    }
+
+    Jwt jwt = decodedToken.get();
+    String subject = jwt.getSubject();
+    UUID accountId;
+
+    try {
+      accountId = UUID.fromString(subject);
+    } catch (IllegalArgumentException exception) {
+      return new IntrospectResponse(false, null, null, null);
+    }
+
+    Account account = accountRepository.findById(accountId).orElse(null);
+    if (account == null || !account.isEnabled()) {
+      return new IntrospectResponse(false, null, null, null);
+    }
+
+    return new IntrospectResponse(
+        true, account.getId().toString(), account.getEmail(), account.getRole().name());
   }
 }

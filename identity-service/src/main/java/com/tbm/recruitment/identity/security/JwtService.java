@@ -1,9 +1,10 @@
 package com.tbm.recruitment.identity.security;
 
-import com.tbm.recruitment.identity.dto.response.IntrospectResponse;
 import com.tbm.recruitment.identity.entity.Account;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -26,6 +27,7 @@ public class JwtService {
 
     JwtClaimsSet claims =
         JwtClaimsSet.builder()
+            .id(UUID.randomUUID().toString())
             .issuer("identity-service")
             .issuedAt(now)
             .expiresAt(now.plus(accessTokenExpiration, ChronoUnit.SECONDS))
@@ -39,15 +41,19 @@ public class JwtService {
     return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
   }
 
-  public IntrospectResponse introspect(String token) {
+  public long getAccessTokenExpirationSeconds() {
+    return accessTokenExpiration;
+  }
+
+  public Optional<Jwt> decodeToken(String token) {
+    if (token == null || token.isBlank()) {
+      return Optional.empty();
+    }
+
     try {
-      Jwt jwt = jwtDecoder.decode(token);
-
-      return new IntrospectResponse(
-          true, jwt.getSubject(), jwt.getClaimAsString("email"), jwt.getClaimAsString("role"));
-
-    } catch (JwtException exception) {
-      return new IntrospectResponse(false, null, null, null);
+      return Optional.of(jwtDecoder.decode(token));
+    } catch (Exception exception) {
+      return Optional.empty();
     }
   }
 }
