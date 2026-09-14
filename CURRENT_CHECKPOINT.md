@@ -2,7 +2,7 @@
 
 Last updated:
 
-2026-09-07
+2026-09-15
 
 Project:
 
@@ -10,29 +10,35 @@ Recruitment Platform Capstone
 
 Current phase:
 
-DAY 6 DONE / DAY 7 READY
+POST-P0 HARDENING — IDENTITY PHASE A FINAL COMPLETE
 
-The frontend module now exists at `web-app/` and uses React + Vite + JavaScript
-with the Devteria-style `src/` organization (`components/`,
-`configurations/`, `pages/`, `routes/`, and `services/`). Authentication,
-Candidate P0, Recruiter P0, and the application-centric Recruiter
-submitted-resume download contract are implemented. Candidate and Recruiter
-notifications are now integrated through the protected frontend routes and the
-Gateway-backed notification API.
+Identity POST-P0 Phase A final hardening is now implemented on top of the
+existing JTI/revocation + authoritative introspection + refresh rotation/replay
+protection baseline.
 
-The exact selected `resumeId` invariant is preserved for applications, and the
-Resume–Job matching architecture and behavior remain unchanged. The verified
-Day 6 baseline before final integration is
-`47ab89acf4bb664677d5fb330d3f99a0f06296bc`.
+Current Identity state includes:
 
-Automated Maven tests, fully qualified Spotless checks, frontend lint/build,
-and the final live Candidate/Recruiter runtime regression have passed.
+- `Account.tokenVersion` persisted (`token_version`, default `0`) and emitted in
+  every new access JWT as claim `tokenVersion`;
+- introspection rejects missing/non-numeric/mismatched tokenVersion after
+  authoritative enabled-account load;
+- refresh rejects tokenVersion mismatch before revocation/new issuance while
+  preserving `saveAndFlush` replay protection;
+- `/identity/me` is authoritative from DB (`accountId/email/role`) and enforces
+  enabled-account + tokenVersion match;
+- protected password change endpoint
+  `PUT /identity/me/password` (`currentPassword`, `newPassword`) verifies
+  current password, updates hash, increments tokenVersion exactly once, and does
+  not issue new tokens;
+- environment-driven, idempotent initial ADMIN bootstrap via
+  `ADMIN_BOOTSTRAP_ENABLED/EMAIL/PASSWORD` with startup conflict fail-fast for
+  existing non-ADMIN email;
+- method security enabled with service-level
+  `@PreAuthorize("hasRole('ADMIN')")` defense-in-depth on admin account listing.
 
-Frontend lint completes with the five pre-existing Candidate warnings; no lint
-errors remain.
-
-Day 6 P0 frontend implementation is complete and the project is ready for
-Day 7 stabilization, demo preparation, and final report work.
+All historical Day 1-6 architecture/domain constraints remain unchanged,
+including frozen recruitment statuses, selected `resumeId` immutability, and
+Resume–Job deterministic matching invariants.
 
 ---
 

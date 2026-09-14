@@ -222,10 +222,13 @@ Current responsibilities:
 - login;
 - JWT issuance;
 - token introspection;
+- refresh rotation + replay-safe single-use refresh;
+- logout/revocation via invalidated JTI registry;
 - roles;
 - account-level authorization;
-- current-account endpoint;
-- basic admin account capability.
+- authoritative current-account endpoint (`/identity/me`);
+- self password change with account-wide token invalidation via `tokenVersion`;
+- environment-driven initial ADMIN bootstrap capability.
 
 Roles:
 
@@ -246,6 +249,7 @@ Claims:
 - `sub` = accountId
 - `email`
 - `role`
+- `tokenVersion`
 - `iat`
 - `exp`
 
@@ -390,6 +394,12 @@ HTTP `200`
 with:
 
 `result.valid = false`
+
+Identity introspection is authoritative against the account in `identity_db`:
+
+- token JTI must not be revoked;
+- account identified by `sub` must exist and be enabled;
+- JWT `tokenVersion` claim must exist, be numeric, and match current `Account.tokenVersion`.
 
 Reason:
 

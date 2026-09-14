@@ -31,6 +31,9 @@ public class Account {
   @Column(nullable = false)
   private boolean enabled;
 
+  @Column(name = "token_version", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+  private Long tokenVersion;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
@@ -42,6 +45,10 @@ public class Account {
 
     if (createdAt == null) {
       createdAt = Instant.now();
+    }
+
+    if (tokenVersion == null) {
+      tokenVersion = 0L;
     }
   }
 }

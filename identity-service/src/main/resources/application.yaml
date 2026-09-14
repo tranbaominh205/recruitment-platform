@@ -29,6 +29,13 @@ security:
     access-token-expiration: 3600
     refreshable-duration: 604800
 
+identity:
+  bootstrap:
+    admin:
+      enabled: ${ADMIN_BOOTSTRAP_ENABLED:false}
+      email: ${ADMIN_BOOTSTRAP_EMAIL:}
+      password: ${ADMIN_BOOTSTRAP_PASSWORD:}
+
 springdoc:
   api-docs:
     path: /v3/api-docs
