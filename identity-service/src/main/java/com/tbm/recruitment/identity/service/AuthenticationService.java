@@ -7,12 +7,15 @@ import com.tbm.recruitment.identity.dto.response.AccountResponse;
 import com.tbm.recruitment.identity.dto.response.IntrospectResponse;
 import com.tbm.recruitment.identity.dto.response.LoginResponse;
 import com.tbm.recruitment.identity.entity.Account;
+import com.tbm.recruitment.identity.entity.InvalidatedToken;
 import com.tbm.recruitment.identity.entity.Role;
 import com.tbm.recruitment.identity.exception.AppException;
 import com.tbm.recruitment.identity.exception.ErrorCode;
 import com.tbm.recruitment.identity.mapper.AccountMapper;
 import com.tbm.recruitment.identity.repository.AccountRepository;
+import com.tbm.recruitment.identity.repository.InvalidatedTokenRepository;
 import com.tbm.recruitment.identity.security.JwtService;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthenticationService {
 
   AccountRepository accountRepository;
+  InvalidatedTokenRepository invalidatedTokenRepository;
   PasswordEncoder passwordEncoder;
   JwtService jwtService;
   AccountMapper accountMapper;
@@ -89,6 +93,15 @@ public class AuthenticationService {
     }
 
     Jwt jwt = decodedToken.get();
+    String jti = jwt.getId();
+    if (jti == null || jti.isBlank()) {
+      return new IntrospectResponse(false, null, null, null);
+    }
+
+    if (invalidatedTokenRepository.existsById(jti)) {
+      return new IntrospectResponse(false, null, null, null);
+    }
+
     String subject = jwt.getSubject();
     UUID accountId;
 
@@ -105,5 +118,46 @@ public class AuthenticationService {
 
     return new IntrospectResponse(
         true, account.getId().toString(), account.getEmail(), account.getRole().name());
+  }
+
+  @Transactional
+  public void logout(String authorizationHeader) {
+    String token = extractBearerToken(authorizationHeader);
+    if (token == null) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
+    Optional<Jwt> decodedToken = jwtService.decodeToken(token);
+    if (decodedToken.isEmpty()) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
+    Jwt jwt = decodedToken.get();
+    String jti = jwt.getId();
+    Instant expiresAt = jwt.getExpiresAt();
+
+    if (jti == null || jti.isBlank() || expiresAt == null) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
+    if (invalidatedTokenRepository.existsById(jti)) {
+      return;
+    }
+
+    invalidatedTokenRepository.save(new InvalidatedToken(jti, expiresAt));
+  }
+
+  private String extractBearerToken(String authorizationHeader) {
+    if (authorizationHeader == null || authorizationHeader.isBlank()) {
+      return null;
+    }
+
+    String trimmedHeader = authorizationHeader.trim();
+    if (!trimmedHeader.startsWith("Bearer ")) {
+      return null;
+    }
+
+    String token = trimmedHeader.substring("Bearer ".length()).trim();
+    return token.isEmpty() ? null : token;
   }
 }
