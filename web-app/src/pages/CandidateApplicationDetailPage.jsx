@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getApiErrorMessage } from '../services/apiError'
+import { subscribeToNotificationCreated } from '../services/accountSseService'
 import { getApplication, getInterview, withdrawApplication } from '../services/recruitmentService'
 
 function CandidateApplicationDetailPage() {
@@ -10,24 +11,88 @@ function CandidateApplicationDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isWithdrawing, setIsWithdrawing] = useState(false)
   const [error, setError] = useState('')
+  const requestSequenceRef = useRef(0)
+  const isMountedRef = useRef(false)
 
-  async function loadDetails() {
+  const loadDetails = useCallback(async ({ showPageLoading }) => {
+    const currentRequest = requestSequenceRef.current + 1
+    requestSequenceRef.current = currentRequest
+
+    if (showPageLoading) {
+      setIsLoading(true)
+      setError('')
+      setApplication(null)
+      setInterview(null)
+    }
+
     try {
       const result = await getApplication(applicationId)
-      setApplication(result)
+      let nextInterview = null
+
       try {
-        setInterview(await getInterview(applicationId))
+        nextInterview = await getInterview(applicationId)
       } catch (interviewError) {
         if (interviewError.response?.status !== 404) throw interviewError
+        nextInterview = null
       }
+
+      if (!isMountedRef.current || currentRequest !== requestSequenceRef.current) {
+        return
+      }
+
+      setApplication(result)
+      setInterview(nextInterview)
+      setError('')
     } catch (requestError) {
+      if (!isMountedRef.current || currentRequest !== requestSequenceRef.current) {
+        return
+      }
+
       setError(getApiErrorMessage(requestError, 'Unable to load this application.'))
     } finally {
-      setIsLoading(false)
+      if (showPageLoading && isMountedRef.current && currentRequest === requestSequenceRef.current) {
+        setIsLoading(false)
+      }
     }
-  }
+  }, [applicationId])
 
-  useEffect(() => { loadDetails() }, [applicationId])
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
+  useEffect(() => {
+    loadDetails({ showPageLoading: true })
+  }, [applicationId, loadDetails])
+
+  useEffect(() => {
+    const unsubscribe = subscribeToNotificationCreated((payload) => {
+      const notificationType = payload?.notificationType
+      const referenceId = payload?.referenceId
+
+      if (!referenceId) {
+        return
+      }
+
+      if (String(referenceId) !== applicationId) {
+        return
+      }
+
+      const isRelevantNotification =
+        notificationType === 'APPLICATION_STATUS_CHANGED'
+        || notificationType === 'INTERVIEW_SCHEDULED'
+
+      if (!isRelevantNotification) {
+        return
+      }
+
+      loadDetails({ showPageLoading: false })
+    })
+
+    return unsubscribe
+  }, [applicationId, loadDetails])
 
   async function handleWithdraw() {
     setError('')
