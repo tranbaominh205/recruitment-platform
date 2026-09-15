@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,6 +27,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -258,8 +260,10 @@ class NotificationServiceTest {
             referenceId);
 
     assertEquals(mappedResponse, result);
-    verify(notificationRepository).save(any(Notification.class));
-    verify(notificationSseService)
+    InOrder inOrder = inOrder(notificationRepository, notificationSseService);
+    inOrder.verify(notificationRepository).save(any(Notification.class));
+    inOrder
+        .verify(notificationSseService)
         .publishNotificationCreated(
             savedNotification.getRecipientAccountId(),
             savedNotification.getId(),

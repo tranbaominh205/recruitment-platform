@@ -2,10 +2,13 @@ package com.tbm.recruitment.notification.service;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -15,9 +18,13 @@ import com.tbm.recruitment.notification.enums.NotificationType;
 import com.tbm.recruitment.notification.exception.AppException;
 import com.tbm.recruitment.notification.exception.ErrorCode;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -159,6 +166,105 @@ class NotificationSseServiceTest {
     verify(healthyEmitter).send(any(SseEmitter.SseEventBuilder.class));
     assertEquals(1, service.getAccountEmitters(accountId).size());
     assertTrue(service.getAccountEmitters(accountId).contains(healthyEmitter));
+  }
+
+  @Test
+  void completionCallbackRemovesEmitterAndAccountRegistryKey() {
+    UUID accountId = UUID.randomUUID();
+    SseEmitter emitter = mock(SseEmitter.class);
+    AtomicReference<Runnable> completionCallback = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              completionCallback.set(invocation.getArgument(0));
+              return null;
+            })
+        .when(emitter)
+        .onCompletion(any(Runnable.class));
+
+    NotificationSseService service = new NotificationSseService(() -> emitter);
+    service.subscribe(accountId.toString(), "CANDIDATE");
+
+    assertTrue(hasAccountEmitterKey(service, accountId));
+    assertNotNull(completionCallback.get());
+    completionCallback.get().run();
+    assertTrue(service.getAccountEmitters(accountId).isEmpty());
+    assertFalse(hasAccountEmitterKey(service, accountId));
+  }
+
+  @Test
+  void timeoutCallbackRemovesEmitterAndAccountRegistryKey() {
+    UUID accountId = UUID.randomUUID();
+    SseEmitter emitter = mock(SseEmitter.class);
+    AtomicReference<Runnable> timeoutCallback = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              timeoutCallback.set(invocation.getArgument(0));
+              return null;
+            })
+        .when(emitter)
+        .onTimeout(any(Runnable.class));
+
+    NotificationSseService service = new NotificationSseService(() -> emitter);
+    service.subscribe(accountId.toString(), "CANDIDATE");
+
+    assertTrue(hasAccountEmitterKey(service, accountId));
+    assertNotNull(timeoutCallback.get());
+    timeoutCallback.get().run();
+    assertTrue(service.getAccountEmitters(accountId).isEmpty());
+    assertFalse(hasAccountEmitterKey(service, accountId));
+  }
+
+  @Test
+  void errorCallbackRemovesEmitterAndAccountRegistryKey() {
+    UUID accountId = UUID.randomUUID();
+    SseEmitter emitter = mock(SseEmitter.class);
+    AtomicReference<Consumer<Throwable>> errorCallback = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              errorCallback.set(invocation.getArgument(0));
+              return null;
+            })
+        .when(emitter)
+        .onError(any());
+
+    NotificationSseService service = new NotificationSseService(() -> emitter);
+    service.subscribe(accountId.toString(), "CANDIDATE");
+
+    assertTrue(hasAccountEmitterKey(service, accountId));
+    assertNotNull(errorCallback.get());
+    errorCallback.get().accept(new RuntimeException("simulated error"));
+    assertTrue(service.getAccountEmitters(accountId).isEmpty());
+    assertFalse(hasAccountEmitterKey(service, accountId));
+  }
+
+  @Test
+  void failedPublishWithSingleEmitterRemovesAccountRegistryKey() throws IOException {
+    UUID accountId = UUID.randomUUID();
+    SseEmitter failingEmitter = mock(SseEmitter.class);
+    NotificationSseService service = new NotificationSseService(() -> failingEmitter);
+    service.subscribe(accountId.toString(), "CANDIDATE");
+    clearInvocations(failingEmitter);
+    doThrow(new IOException("broken emitter"))
+        .when(failingEmitter)
+        .send(any(SseEmitter.SseEventBuilder.class));
+
+    service.publishNotificationCreated(
+        accountId, UUID.randomUUID(), NotificationType.INTERVIEW_SCHEDULED, null);
+
+    assertTrue(service.getAccountEmitters(accountId).isEmpty());
+    assertFalse(hasAccountEmitterKey(service, accountId));
+  }
+
+  @SuppressWarnings("unchecked")
+  private boolean hasAccountEmitterKey(NotificationSseService service, UUID accountId) {
+    try {
+      Field emittersField = NotificationSseService.class.getDeclaredField("accountEmitters");
+      emittersField.setAccessible(true);
+      Map<UUID, Set<SseEmitter>> emitters = (Map<UUID, Set<SseEmitter>>) emittersField.get(service);
+      return emitters.containsKey(accountId);
+    } catch (ReflectiveOperationException exception) {
+      throw new RuntimeException(exception);
+    }
   }
 
   private static class FailingSseEmitter extends SseEmitter {

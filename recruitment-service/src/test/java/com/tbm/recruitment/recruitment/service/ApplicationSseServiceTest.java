@@ -2,10 +2,13 @@ package com.tbm.recruitment.recruitment.service;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -13,8 +16,13 @@ import static org.mockito.Mockito.verify;
 
 import com.tbm.recruitment.recruitment.enums.ApplicationListChange;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -112,6 +120,105 @@ class ApplicationSseServiceTest {
 
     assertTrue(exception.getMessage().contains("Unable to establish SSE connection"));
     assertTrue(service.getJobEmitters(jobId).isEmpty());
+  }
+
+  @Test
+  void completionCallbackRemovesEmitterAndJobRegistryKey() {
+    UUID jobId = UUID.randomUUID();
+    SseEmitter emitter = mock(SseEmitter.class);
+    AtomicReference<Runnable> completionCallback = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              completionCallback.set(invocation.getArgument(0));
+              return null;
+            })
+        .when(emitter)
+        .onCompletion(any(Runnable.class));
+
+    ApplicationSseService service = new ApplicationSseService(() -> emitter);
+    service.subscribe(jobId);
+
+    assertTrue(hasJobEmitterKey(service, jobId));
+    assertNotNull(completionCallback.get());
+    completionCallback.get().run();
+    assertTrue(service.getJobEmitters(jobId).isEmpty());
+    assertFalse(hasJobEmitterKey(service, jobId));
+  }
+
+  @Test
+  void timeoutCallbackRemovesEmitterAndJobRegistryKey() {
+    UUID jobId = UUID.randomUUID();
+    SseEmitter emitter = mock(SseEmitter.class);
+    AtomicReference<Runnable> timeoutCallback = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              timeoutCallback.set(invocation.getArgument(0));
+              return null;
+            })
+        .when(emitter)
+        .onTimeout(any(Runnable.class));
+
+    ApplicationSseService service = new ApplicationSseService(() -> emitter);
+    service.subscribe(jobId);
+
+    assertTrue(hasJobEmitterKey(service, jobId));
+    assertNotNull(timeoutCallback.get());
+    timeoutCallback.get().run();
+    assertTrue(service.getJobEmitters(jobId).isEmpty());
+    assertFalse(hasJobEmitterKey(service, jobId));
+  }
+
+  @Test
+  void errorCallbackRemovesEmitterAndJobRegistryKey() {
+    UUID jobId = UUID.randomUUID();
+    SseEmitter emitter = mock(SseEmitter.class);
+    AtomicReference<Consumer<Throwable>> errorCallback = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              errorCallback.set(invocation.getArgument(0));
+              return null;
+            })
+        .when(emitter)
+        .onError(any());
+
+    ApplicationSseService service = new ApplicationSseService(() -> emitter);
+    service.subscribe(jobId);
+
+    assertTrue(hasJobEmitterKey(service, jobId));
+    assertNotNull(errorCallback.get());
+    errorCallback.get().accept(new RuntimeException("simulated error"));
+    assertTrue(service.getJobEmitters(jobId).isEmpty());
+    assertFalse(hasJobEmitterKey(service, jobId));
+  }
+
+  @Test
+  void failedPublishWithSingleEmitterRemovesJobRegistryKey() throws IOException {
+    UUID jobId = UUID.randomUUID();
+    SseEmitter failingEmitter = mock(SseEmitter.class);
+    ApplicationSseService service = new ApplicationSseService(() -> failingEmitter);
+    service.subscribe(jobId);
+    clearInvocations(failingEmitter);
+    doThrow(new IOException("broken emitter"))
+        .when(failingEmitter)
+        .send(any(SseEmitter.SseEventBuilder.class));
+
+    service.publishApplicationListChanged(
+        jobId, UUID.randomUUID(), ApplicationListChange.SUBMITTED);
+
+    assertTrue(service.getJobEmitters(jobId).isEmpty());
+    assertFalse(hasJobEmitterKey(service, jobId));
+  }
+
+  @SuppressWarnings("unchecked")
+  private boolean hasJobEmitterKey(ApplicationSseService service, UUID jobId) {
+    try {
+      Field emittersField = ApplicationSseService.class.getDeclaredField("jobEmitters");
+      emittersField.setAccessible(true);
+      Map<UUID, Set<SseEmitter>> emitters = (Map<UUID, Set<SseEmitter>>) emittersField.get(service);
+      return emitters.containsKey(jobId);
+    } catch (ReflectiveOperationException exception) {
+      throw new RuntimeException(exception);
+    }
   }
 
   private static class FailingSseEmitter extends SseEmitter {
