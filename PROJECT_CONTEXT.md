@@ -61,9 +61,15 @@ The system keeps exactly one primary role per `Account`:
 - ADMIN
 
 `ADMIN` additionally owns an authoritative database-backed set of
-`AdminPermission` values. These are stored in Identity Service state and are
-returned by `/identity/me` and identity introspection for frontend capability
-checks and backend authorization decisions.
+`AdminPermission` values. These are stored in Identity Service state in
+`identity_db` and are returned by `/identity/me` and identity introspection for
+frontend capability checks and backend authorization decisions.
+
+Identity introspection and `/identity/me` read the authoritative permission set
+from the current Identity database row. The Gateway may propagate sanitized,
+trusted `X-Account-Permissions` headers, but business services authorize Job and
+Employer moderation using that trusted context and do not query `identity_db`
+directly for permission re-checks.
 
 Current `AdminPermission` values:
 
@@ -263,7 +269,8 @@ Recruiter-facing deterministic score weights:
 - skills: 55%
 - experience: 25%
 - education: 10%
-- title/domain: 10%
+- title: 5%
+- domain: 5%
 
 Candidate preferences are NOT included in recruiter matching score.
 
