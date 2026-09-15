@@ -18,7 +18,9 @@ import com.tbm.recruitment.recruitment.exception.AppException;
 import com.tbm.recruitment.recruitment.exception.ErrorCode;
 import com.tbm.recruitment.recruitment.mapper.ApplicationMapper;
 import com.tbm.recruitment.recruitment.repository.ApplicationRepository;
+import jakarta.persistence.criteria.Predicate;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -28,8 +30,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -89,7 +93,13 @@ public class ApplicationService {
   }
 
   public PageResponse<ApplicationResponse> getApplicationsForOwnedJob(
-      UUID jobId, String accountIdHeader, String accountRole, int page, int size) {
+      UUID jobId,
+      String accountIdHeader,
+      String accountRole,
+      String status,
+      String sortDirection,
+      int page,
+      int size) {
 
     requireRecruiterAccount(accountIdHeader, accountRole);
 
@@ -97,10 +107,25 @@ public class ApplicationService {
 
     jobClient.getOwnedJob(jobId, accountIdHeader, accountRole);
 
-    PageRequest pageRequest =
-        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "submittedAt"));
+    ApplicationStatus statusFilter = parseStatus(status);
+    Sort.Direction submittedAtDirection = parseSortDirection(sortDirection);
+    Specification<Application> specification =
+        (root, query, criteriaBuilder) -> {
+          List<Predicate> predicates = new ArrayList<>();
+          predicates.add(criteriaBuilder.equal(root.get("jobId"), jobId));
+          if (statusFilter != null) {
+            predicates.add(criteriaBuilder.equal(root.get("status"), statusFilter));
+          }
+          return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
 
-    Page<Application> applicationPage = applicationRepository.findAllByJobId(jobId, pageRequest);
+    PageRequest pageRequest =
+        PageRequest.of(
+            page,
+            size,
+            Sort.by(Sort.Order.by("submittedAt").with(submittedAtDirection), Sort.Order.asc("id")));
+
+    Page<Application> applicationPage = applicationRepository.findAll(specification, pageRequest);
 
     return toPageResponse(applicationPage);
   }
@@ -325,5 +350,30 @@ public class ApplicationService {
     } catch (IllegalArgumentException exception) {
       throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
+  }
+
+  private ApplicationStatus parseStatus(String status) {
+    if (!StringUtils.hasText(status)) {
+      return null;
+    }
+    try {
+      return ApplicationStatus.valueOf(status.trim().toUpperCase());
+    } catch (IllegalArgumentException exception) {
+      throw new AppException(ErrorCode.INVALID_REQUEST);
+    }
+  }
+
+  private Sort.Direction parseSortDirection(String sortDirection) {
+    if (!StringUtils.hasText(sortDirection)) {
+      throw new AppException(ErrorCode.INVALID_REQUEST);
+    }
+    String normalized = sortDirection.trim().toLowerCase();
+    if ("asc".equals(normalized)) {
+      return Sort.Direction.ASC;
+    }
+    if ("desc".equals(normalized)) {
+      return Sort.Direction.DESC;
+    }
+    throw new AppException(ErrorCode.INVALID_REQUEST);
   }
 }
