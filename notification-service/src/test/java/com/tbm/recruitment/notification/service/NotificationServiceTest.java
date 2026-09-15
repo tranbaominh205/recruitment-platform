@@ -3,6 +3,7 @@ package com.tbm.recruitment.notification.service;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.any;
@@ -33,12 +34,14 @@ class NotificationServiceTest {
 
   @Mock private NotificationRepository notificationRepository;
   @Mock private NotificationMapper notificationMapper;
+  @Mock private NotificationSseService notificationSseService;
 
   private NotificationService notificationService;
 
   @BeforeEach
   void setUp() {
-    notificationService = new NotificationService(notificationRepository, notificationMapper);
+    notificationService =
+        new NotificationService(notificationRepository, notificationMapper, notificationSseService);
   }
 
   @Test
@@ -217,6 +220,99 @@ class NotificationServiceTest {
             AppException.class,
             () -> notificationService.getUnreadNotificationCount("not-a-uuid", "CANDIDATE"));
     assertEquals(ErrorCode.UNAUTHENTICATED, invalidAccountIdException.getErrorCode());
+  }
+
+  @Test
+  void createNotificationPersistsThenPublishesRealtimeEvent() {
+    UUID sourceEventId = UUID.randomUUID();
+    UUID recipientAccountId = UUID.randomUUID();
+    UUID referenceId = UUID.randomUUID();
+    NotificationType type = NotificationType.APPLICATION_STATUS_CHANGED;
+
+    Notification savedNotification =
+        Notification.builder()
+            .id(UUID.randomUUID())
+            .sourceEventId(sourceEventId)
+            .recipientAccountId(recipientAccountId)
+            .type(type)
+            .title("Application status updated")
+            .message("Status changed")
+            .referenceId(referenceId)
+            .read(false)
+            .createdAt(Instant.now())
+            .build();
+
+    NotificationResponse mappedResponse = toResponse(savedNotification, false);
+
+    when(notificationRepository.existsBySourceEventId(sourceEventId)).thenReturn(false);
+    when(notificationRepository.save(any(Notification.class))).thenReturn(savedNotification);
+    when(notificationMapper.toNotificationResponse(savedNotification)).thenReturn(mappedResponse);
+
+    NotificationResponse result =
+        notificationService.createNotification(
+            sourceEventId,
+            recipientAccountId,
+            type,
+            "Application status updated",
+            "Status changed",
+            referenceId);
+
+    assertEquals(mappedResponse, result);
+    verify(notificationRepository).save(any(Notification.class));
+    verify(notificationSseService)
+        .publishNotificationCreated(
+            savedNotification.getRecipientAccountId(),
+            savedNotification.getId(),
+            savedNotification.getType(),
+            savedNotification.getReferenceId());
+  }
+
+  @Test
+  void createNotificationDuplicateEventSkipsPersistenceAndRealtimePublish() {
+    UUID sourceEventId = UUID.randomUUID();
+
+    when(notificationRepository.existsBySourceEventId(sourceEventId)).thenReturn(true);
+
+    NotificationResponse result =
+        notificationService.createNotification(
+            sourceEventId,
+            UUID.randomUUID(),
+            NotificationType.INTERVIEW_SCHEDULED,
+            "Interview scheduled",
+            "Interview details",
+            UUID.randomUUID());
+
+    assertNull(result);
+    verify(notificationRepository, never()).save(any(Notification.class));
+    verify(notificationSseService, never())
+        .publishNotificationCreated(
+            any(UUID.class), any(UUID.class), any(NotificationType.class), any());
+  }
+
+  @Test
+  void createNotificationPersistenceFailureDoesNotPublishRealtimeEvent() {
+    UUID sourceEventId = UUID.randomUUID();
+    UUID recipientAccountId = UUID.randomUUID();
+    UUID referenceId = UUID.randomUUID();
+
+    when(notificationRepository.existsBySourceEventId(sourceEventId)).thenReturn(false);
+    when(notificationRepository.save(any(Notification.class)))
+        .thenThrow(new RuntimeException("mongo unavailable"));
+
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            notificationService.createNotification(
+                sourceEventId,
+                recipientAccountId,
+                NotificationType.INTERVIEW_SCHEDULED,
+                "Interview scheduled",
+                "Interview details",
+                referenceId));
+
+    verify(notificationSseService, never())
+        .publishNotificationCreated(
+            any(UUID.class), any(UUID.class), any(NotificationType.class), any());
   }
 
   private Notification buildNotification(UUID accountId, boolean read) {

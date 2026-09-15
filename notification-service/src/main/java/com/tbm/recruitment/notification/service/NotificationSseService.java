@@ -1,5 +1,7 @@
 package com.tbm.recruitment.notification.service;
 
+import com.tbm.recruitment.notification.dto.response.NotificationCreatedSseEvent;
+import com.tbm.recruitment.notification.enums.NotificationType;
 import com.tbm.recruitment.notification.exception.AppException;
 import com.tbm.recruitment.notification.exception.ErrorCode;
 import java.io.IOException;
@@ -58,6 +60,34 @@ public class NotificationSseService {
     }
 
     return emitter;
+  }
+
+  public void publishNotificationCreated(
+      UUID recipientAccountId,
+      UUID notificationId,
+      NotificationType notificationType,
+      UUID referenceId) {
+    Set<SseEmitter> emitters = accountEmitters.get(recipientAccountId);
+    if (emitters == null || emitters.isEmpty()) {
+      return;
+    }
+
+    NotificationCreatedSseEvent payload =
+        new NotificationCreatedSseEvent(
+            "NOTIFICATION_CREATED", notificationId, notificationType, referenceId);
+
+    for (SseEmitter emitter : Set.copyOf(emitters)) {
+      try {
+        emitter.send(SseEmitter.event().name("NOTIFICATION_CREATED").data(payload));
+      } catch (IOException | IllegalStateException exception) {
+        removeEmitter(recipientAccountId, emitter);
+        try {
+          emitter.complete();
+        } catch (IllegalStateException ignored) {
+          // no-op: the emitter is already closing or invalid.
+        }
+      }
+    }
   }
 
   Set<SseEmitter> getAccountEmitters(UUID accountId) {
