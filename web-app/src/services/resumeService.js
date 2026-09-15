@@ -27,3 +27,11 @@ export function downloadMyResume(resumeId) {
 export function getAdminResumeStatistics() {
   return apiClient.get('/resume/admin/statistics').then(getResult)
 }
+
+export function getAdminResumes(params) {
+  return apiClient.get('/resume/admin/resumes', { params }).then(getResult)
+}
+
+export function getAdminResume(resumeId) {
+  return apiClient.get(`/resume/admin/resumes/${resumeId}`).then(getResult)
+}

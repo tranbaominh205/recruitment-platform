@@ -27,3 +27,7 @@ export function updateApplicationStatus(applicationId, status) { return apiClien
 export function scheduleInterview(applicationId, payload) { return apiClient.post(`/recruitment/application/${applicationId}/interview`, payload).then(getResult) }
 export function downloadSubmittedResume(applicationId) { return apiClient.get(`/recruitment/application/${applicationId}/resume/download`, { responseType: 'blob' }) }
 export function getAdminRecruitmentStatistics() { return apiClient.get('/recruitment/admin/statistics').then(getResult) }
+export function getAdminApplications(params) { return apiClient.get('/recruitment/admin/applications', { params }).then(getResult) }
+export function getAdminApplication(applicationId) { return apiClient.get(`/recruitment/admin/applications/${applicationId}`).then(getResult) }
+export function getAdminInterviews(params) { return apiClient.get('/recruitment/admin/interviews', { params }).then(getResult) }
+export function getAdminInterview(interviewId) { return apiClient.get(`/recruitment/admin/interviews/${interviewId}`).then(getResult) }

@@ -5,6 +5,8 @@ import AdminAccountsPage from '../pages/AdminAccountsPage'
 import AdminCompaniesPage from '../pages/AdminCompaniesPage'
 import AdminCompanyDetailPage from '../pages/AdminCompanyDetailPage'
 import AdminLayout from '../components/AdminLayout'
+import AdminApplicationDetailPage from '../pages/AdminApplicationDetailPage'
+import AdminApplicationsPage from '../pages/AdminApplicationsPage'
 import CandidateApplicationDetailPage from '../pages/CandidateApplicationDetailPage'
 import CandidateApplicationsPage from '../pages/CandidateApplicationsPage'
 import CandidateHomePage from '../pages/CandidateHomePage'
@@ -13,8 +15,12 @@ import CandidateJobsPage from '../pages/CandidateJobsPage'
 import CandidateProfilePage from '../pages/CandidateProfilePage'
 import CandidateResumesPage from '../pages/CandidateResumesPage'
 import AdminDashboardPage from '../pages/AdminDashboardPage'
+import AdminInterviewDetailPage from '../pages/AdminInterviewDetailPage'
+import AdminInterviewsPage from '../pages/AdminInterviewsPage'
 import AdminJobDetailPage from '../pages/AdminJobDetailPage'
 import AdminJobsPage from '../pages/AdminJobsPage'
+import AdminResumeDetailPage from '../pages/AdminResumeDetailPage'
+import AdminResumesPage from '../pages/AdminResumesPage'
 import NotificationsPage from '../pages/NotificationsPage'
 import CandidateLayout from '../components/CandidateLayout'
 import RecruiterLayout from '../components/RecruiterLayout'
@@ -72,6 +78,12 @@ function AppRoutes() {
               <Route path="companies/:companyId" element={<AdminCompanyDetailPage />} />
               <Route path="jobs" element={<AdminJobsPage />} />
               <Route path="jobs/:jobId" element={<AdminJobDetailPage />} />
+              <Route path="applications" element={<AdminApplicationsPage />} />
+              <Route path="applications/:applicationId" element={<AdminApplicationDetailPage />} />
+              <Route path="interviews" element={<AdminInterviewsPage />} />
+              <Route path="interviews/:interviewId" element={<AdminInterviewDetailPage />} />
+              <Route path="resumes" element={<AdminResumesPage />} />
+              <Route path="resumes/:resumeId" element={<AdminResumeDetailPage />} />
             </Route>
           </Route>
         </Routes>
