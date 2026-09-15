@@ -77,11 +77,14 @@ public class ApplicationController {
       @PathVariable UUID jobId,
       @RequestHeader(value = "X-Account-Id", required = false) String accountId,
       @RequestHeader(value = "X-Account-Role", required = false) String accountRole,
+      @RequestParam(required = false) String status,
+      @RequestParam(defaultValue = "desc") String sortDirection,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size) {
 
     PageResponse<ApplicationResponse> result =
-        applicationService.getApplicationsForOwnedJob(jobId, accountId, accountRole, page, size);
+        applicationService.getApplicationsForOwnedJob(
+            jobId, accountId, accountRole, status, sortDirection, page, size);
 
     return ApiResponse.<PageResponse<ApplicationResponse>>builder()
         .code(ErrorCode.SUCCESS.getCode())
