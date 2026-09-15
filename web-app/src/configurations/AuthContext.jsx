@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import AccountSseConnection from '../components/AccountSseConnection'
 import { ACCESS_TOKEN_KEY } from './apiClient'
 import { getCurrentAccount, loginAccount, logoutAccount } from '../services/identityService'
 import { AuthContext } from './authContextValue'
@@ -81,5 +82,10 @@ export function AuthProvider({ children }) {
     logout,
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={value}>
+      <AccountSseConnection />
+      {children}
+    </AuthContext.Provider>
+  )
 }

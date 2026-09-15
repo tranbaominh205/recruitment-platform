@@ -5,17 +5,20 @@ import com.tbm.recruitment.notification.dto.response.NotificationResponse;
 import com.tbm.recruitment.notification.dto.response.UnreadNotificationCountResponse;
 import com.tbm.recruitment.notification.exception.ErrorCode;
 import com.tbm.recruitment.notification.service.NotificationService;
+import com.tbm.recruitment.notification.service.NotificationSseService;
 import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/notification")
@@ -24,6 +27,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class NotificationController {
 
   NotificationService notificationService;
+  NotificationSseService notificationSseService;
+
+  @GetMapping(value = "/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+  public SseEmitter streamEvents(
+      @RequestHeader(value = "X-Account-Id", required = false) String accountId,
+      @RequestHeader(value = "X-Account-Role", required = false) String accountRole) {
+    return notificationSseService.subscribe(accountId, accountRole);
+  }
 
   @GetMapping
   public ApiResponse<List<NotificationResponse>> getMyNotifications(
