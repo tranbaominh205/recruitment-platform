@@ -2,6 +2,8 @@ package com.tbm.recruitment.identity.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import lombok.*;
 
@@ -28,6 +30,15 @@ public class Account {
   @Column(nullable = false, length = 30)
   private Role role;
 
+  @ElementCollection(fetch = FetchType.LAZY, targetClass = AdminPermission.class)
+  @Enumerated(EnumType.STRING)
+  @CollectionTable(
+      name = "account_admin_permissions",
+      joinColumns = @JoinColumn(name = "account_id"))
+  @Column(name = "permission", nullable = false, length = 50)
+  @Builder.Default
+  private Set<AdminPermission> adminPermissions = new HashSet<>();
+
   @Column(nullable = false)
   private boolean enabled;
 
@@ -49,6 +60,10 @@ public class Account {
 
     if (tokenVersion == null) {
       tokenVersion = 0L;
+    }
+
+    if (adminPermissions == null) {
+      adminPermissions = new HashSet<>();
     }
   }
 }

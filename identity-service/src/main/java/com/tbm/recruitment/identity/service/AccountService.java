@@ -6,6 +6,7 @@ import com.tbm.recruitment.identity.dto.response.AdminAccountStatisticsResponse;
 import com.tbm.recruitment.identity.dto.response.MeResponse;
 import com.tbm.recruitment.identity.dto.response.PageResponse;
 import com.tbm.recruitment.identity.entity.Account;
+import com.tbm.recruitment.identity.entity.AdminPermission;
 import com.tbm.recruitment.identity.entity.Role;
 import com.tbm.recruitment.identity.exception.AppException;
 import com.tbm.recruitment.identity.exception.ErrorCode;
@@ -96,6 +97,12 @@ public class AccountService {
       throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
     UUID currentAdminId = parseUuidOrUnauthenticated(jwt.getSubject());
+    Account currentAdmin = loadAuthoritativeAdminAccount(jwt);
+
+    if (currentAdmin.getAdminPermissions() == null
+        || !currentAdmin.getAdminPermissions().contains(AdminPermission.ACCOUNT_DISABLE)) {
+      throw new AppException(ErrorCode.UNAUTHORIZED);
+    }
 
     if (!enabled && currentAdminId.equals(accountId)) {
       throw new AppException(ErrorCode.UNAUTHORIZED);
@@ -113,6 +120,31 @@ public class AccountService {
     }
 
     return accountMapper.toAccountResponse(account);
+  }
+
+  @Transactional
+  @PreAuthorize("hasRole('ADMIN')")
+  public AccountResponse revokeSessions(UUID accountId, Jwt jwt) {
+    if (jwt == null) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+    Account currentAdmin = loadAuthoritativeAdminAccount(jwt);
+    if (currentAdmin.getAdminPermissions() == null
+        || !currentAdmin.getAdminPermissions().contains(AdminPermission.ACCOUNT_REVOKE_SESSIONS)) {
+      throw new AppException(ErrorCode.UNAUTHORIZED);
+    }
+
+    Account targetAccount =
+        accountRepository
+            .findById(accountId)
+            .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
+
+    long nextTokenVersion =
+        targetAccount.getTokenVersion() == null ? 0L : targetAccount.getTokenVersion();
+    targetAccount.setTokenVersion(nextTokenVersion + 1L);
+    targetAccount = accountRepository.save(targetAccount);
+
+    return accountMapper.toAccountResponse(targetAccount);
   }
 
   @Transactional(readOnly = true)
@@ -167,6 +199,14 @@ public class AccountService {
       throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
 
+    return account;
+  }
+
+  private Account loadAuthoritativeAdminAccount(Jwt jwt) {
+    Account account = loadAuthoritativeEnabledAccount(jwt);
+    if (account.getRole() != Role.ADMIN) {
+      throw new AppException(ErrorCode.UNAUTHORIZED);
+    }
     return account;
   }
 

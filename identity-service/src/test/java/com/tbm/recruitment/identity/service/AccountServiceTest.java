@@ -20,6 +20,7 @@ import com.tbm.recruitment.identity.dto.response.IntrospectResponse;
 import com.tbm.recruitment.identity.dto.response.MeResponse;
 import com.tbm.recruitment.identity.dto.response.PageResponse;
 import com.tbm.recruitment.identity.entity.Account;
+import com.tbm.recruitment.identity.entity.AdminPermission;
 import com.tbm.recruitment.identity.entity.Role;
 import com.tbm.recruitment.identity.exception.AppException;
 import com.tbm.recruitment.identity.exception.ErrorCode;
@@ -213,8 +214,12 @@ class AccountServiceTest {
 
   @Test
   void updateAccountEnabledNoOpWhenSameStateDoesNotIncrementTokenVersion() {
+    UUID adminId = UUID.randomUUID();
     UUID accountId = UUID.randomUUID();
+    Account adminAccount =
+        buildAdminAccount(adminId, java.util.EnumSet.allOf(AdminPermission.class));
     Account account = buildAccount(accountId, "enabled@example.com", Role.CANDIDATE, 2L);
+    when(accountRepository.findById(adminId)).thenReturn(Optional.of(adminAccount));
     when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
     when(accountMapper.toAccountResponse(account))
         .thenReturn(
@@ -223,7 +228,8 @@ class AccountServiceTest {
 
     Jwt adminJwt =
         Jwt.withTokenValue("token")
-            .subject(UUID.randomUUID().toString())
+            .subject(adminId.toString())
+            .claim("tokenVersion", 7L)
             .header("alg", "none")
             .build();
 
@@ -235,9 +241,13 @@ class AccountServiceTest {
 
   @Test
   void updateAccountEnabledRealChangeIncrementsTokenVersionExactlyOnce() {
+    UUID adminId = UUID.randomUUID();
     UUID accountId = UUID.randomUUID();
+    Account adminAccount =
+        buildAdminAccount(adminId, java.util.EnumSet.allOf(AdminPermission.class));
     Account account = buildAccount(accountId, "enabled@example.com", Role.CANDIDATE, 5L);
     account.setEnabled(true);
+    when(accountRepository.findById(adminId)).thenReturn(Optional.of(adminAccount));
     when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
     when(accountRepository.save(any(Account.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -255,7 +265,8 @@ class AccountServiceTest {
 
     Jwt adminJwt =
         Jwt.withTokenValue("token")
-            .subject(UUID.randomUUID().toString())
+            .subject(adminId.toString())
+            .claim("tokenVersion", 7L)
             .header("alg", "none")
             .build();
 
@@ -267,10 +278,39 @@ class AccountServiceTest {
   }
 
   @Test
+  void updateAccountEnabledRequiresAccountDisablePermission() {
+    UUID adminId = UUID.randomUUID();
+    Account adminAccount =
+        buildAdminAccount(adminId, java.util.EnumSet.of(AdminPermission.JOB_MODERATE));
+    Jwt adminJwt =
+        Jwt.withTokenValue("token")
+            .subject(adminId.toString())
+            .claim("tokenVersion", 7L)
+            .header("alg", "none")
+            .build();
+    when(accountRepository.findById(adminId)).thenReturn(Optional.of(adminAccount));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () -> accountService.updateAccountEnabled(UUID.randomUUID(), false, adminJwt));
+
+    assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+    verify(accountRepository, never()).save(any(Account.class));
+  }
+
+  @Test
   void updateAccountEnabledCannotDisableCurrentAdmin() {
     UUID adminId = UUID.randomUUID();
+    Account adminAccount =
+        buildAdminAccount(adminId, java.util.EnumSet.allOf(AdminPermission.class));
     Jwt adminJwt =
-        Jwt.withTokenValue("token").subject(adminId.toString()).header("alg", "none").build();
+        Jwt.withTokenValue("token")
+            .subject(adminId.toString())
+            .claim("tokenVersion", 7L)
+            .header("alg", "none")
+            .build();
+    when(accountRepository.findById(adminId)).thenReturn(Optional.of(adminAccount));
 
     AppException exception =
         assertThrows(
@@ -278,7 +318,43 @@ class AccountServiceTest {
             () -> accountService.updateAccountEnabled(adminId, false, adminJwt));
 
     assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
-    verify(accountRepository, never()).findById(any());
+    verify(accountRepository, never()).save(any(Account.class));
+  }
+
+  @Test
+  void revokeSessionsRequiresPermissionAndIncrementsTargetTokenVersionExactlyOnce() {
+    UUID adminId = UUID.randomUUID();
+    UUID targetId = UUID.randomUUID();
+    Account adminAccount =
+        buildAdminAccount(adminId, java.util.EnumSet.of(AdminPermission.ACCOUNT_REVOKE_SESSIONS));
+    Account targetAccount = buildAccount(targetId, "target@example.com", Role.CANDIDATE, 2L);
+    Jwt adminJwt =
+        Jwt.withTokenValue("token")
+            .subject(adminId.toString())
+            .claim("tokenVersion", 7L)
+            .header("alg", "none")
+            .build();
+    when(accountRepository.findById(adminId)).thenReturn(Optional.of(adminAccount));
+    when(accountRepository.findById(targetId)).thenReturn(Optional.of(targetAccount));
+    when(accountRepository.save(any(Account.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(accountMapper.toAccountResponse(any(Account.class)))
+        .thenAnswer(
+            invocation -> {
+              Account mapped = invocation.getArgument(0);
+              return new AccountResponse(
+                  mapped.getId(),
+                  mapped.getEmail(),
+                  mapped.getRole(),
+                  mapped.isEnabled(),
+                  mapped.getCreatedAt());
+            });
+
+    AccountResponse response = accountService.revokeSessions(targetId, adminJwt);
+
+    assertEquals(targetId, response.id());
+    assertEquals(3L, targetAccount.getTokenVersion());
+    verify(accountRepository).save(targetAccount);
   }
 
   @Test
@@ -299,16 +375,36 @@ class AccountServiceTest {
     assertEquals(3L, response.disabledAccounts());
   }
 
+  private Account buildAdminAccount(UUID accountId, java.util.Set<AdminPermission> permissions) {
+    Account account =
+        Account.builder()
+            .id(accountId)
+            .email("admin-" + accountId + "@example.com")
+            .passwordHash(passwordEncoder.encode("secret123"))
+            .role(Role.ADMIN)
+            .adminPermissions(new java.util.HashSet<>(permissions))
+            .enabled(true)
+            .tokenVersion(7L)
+            .createdAt(Instant.now())
+            .build();
+    return account;
+  }
+
   private Account buildAccount(UUID accountId, String email, Role role, long tokenVersion) {
-    return Account.builder()
-        .id(accountId)
-        .email(email)
-        .passwordHash(passwordEncoder.encode("secret123"))
-        .role(role)
-        .enabled(true)
-        .tokenVersion(tokenVersion)
-        .createdAt(Instant.now())
-        .build();
+    Account account =
+        Account.builder()
+            .id(accountId)
+            .email(email)
+            .passwordHash(passwordEncoder.encode("secret123"))
+            .role(role)
+            .enabled(true)
+            .tokenVersion(tokenVersion)
+            .createdAt(Instant.now())
+            .build();
+    if (role == Role.ADMIN) {
+      account.setAdminPermissions(java.util.EnumSet.allOf(AdminPermission.class));
+    }
+    return account;
   }
 
   private Jwt decodeAccessToken(String token) {

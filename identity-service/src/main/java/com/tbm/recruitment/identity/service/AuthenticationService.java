@@ -8,6 +8,7 @@ import com.tbm.recruitment.identity.dto.response.AccountResponse;
 import com.tbm.recruitment.identity.dto.response.IntrospectResponse;
 import com.tbm.recruitment.identity.dto.response.LoginResponse;
 import com.tbm.recruitment.identity.entity.Account;
+import com.tbm.recruitment.identity.entity.AdminPermission;
 import com.tbm.recruitment.identity.entity.InvalidatedToken;
 import com.tbm.recruitment.identity.entity.Role;
 import com.tbm.recruitment.identity.exception.AppException;
@@ -17,6 +18,8 @@ import com.tbm.recruitment.identity.repository.AccountRepository;
 import com.tbm.recruitment.identity.repository.InvalidatedTokenRepository;
 import com.tbm.recruitment.identity.security.JwtService;
 import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
@@ -91,17 +94,17 @@ public class AuthenticationService {
   public IntrospectResponse introspect(IntrospectRequest request) {
     Optional<Jwt> decodedToken = jwtService.decodeToken(request.token());
     if (decodedToken.isEmpty()) {
-      return new IntrospectResponse(false, null, null, null);
+      return new IntrospectResponse(false, null, null, null, List.of());
     }
 
     Jwt jwt = decodedToken.get();
     String jti = jwt.getId();
     if (jti == null || jti.isBlank()) {
-      return new IntrospectResponse(false, null, null, null);
+      return new IntrospectResponse(false, null, null, null, List.of());
     }
 
     if (invalidatedTokenRepository.existsById(jti)) {
-      return new IntrospectResponse(false, null, null, null);
+      return new IntrospectResponse(false, null, null, null, List.of());
     }
 
     String subject = jwt.getSubject();
@@ -110,20 +113,24 @@ public class AuthenticationService {
     try {
       accountId = UUID.fromString(subject);
     } catch (IllegalArgumentException exception) {
-      return new IntrospectResponse(false, null, null, null);
+      return new IntrospectResponse(false, null, null, null, List.of());
     }
 
     Account account = accountRepository.findById(accountId).orElse(null);
     if (account == null || !account.isEnabled()) {
-      return new IntrospectResponse(false, null, null, null);
+      return new IntrospectResponse(false, null, null, null, List.of());
     }
 
     if (!isTokenVersionMatched(jwt, account)) {
-      return new IntrospectResponse(false, null, null, null);
+      return new IntrospectResponse(false, null, null, null, List.of());
     }
 
     return new IntrospectResponse(
-        true, account.getId().toString(), account.getEmail(), account.getRole().name());
+        true,
+        account.getId().toString(),
+        account.getEmail(),
+        account.getRole().name(),
+        getPermissions(account));
   }
 
   @Transactional
@@ -222,6 +229,21 @@ public class AuthenticationService {
 
     String accessToken = jwtService.generateAccessToken(account);
     return new LoginResponse(accessToken, "Bearer", jwtService.getAccessTokenExpirationSeconds());
+  }
+
+  private List<String> getPermissions(Account account) {
+    if (account.getRole() != Role.ADMIN) {
+      return List.of();
+    }
+
+    if (account.getAdminPermissions() == null || account.getAdminPermissions().isEmpty()) {
+      return List.of();
+    }
+
+    return account.getAdminPermissions().stream()
+        .sorted(Comparator.comparing(AdminPermission::name))
+        .map(Enum::name)
+        .toList();
   }
 
   private String extractBearerToken(String authorizationHeader) {
