@@ -228,7 +228,10 @@ Current responsibilities:
 - account-level authorization;
 - authoritative current-account endpoint (`/identity/me`);
 - self password change with account-wide token invalidation via `tokenVersion`;
-- environment-driven initial ADMIN bootstrap capability.
+- environment-driven initial ADMIN bootstrap capability;
+- Admin account management APIs for paginated/filterable account reads,
+  account detail, enable/disable mutation with tokenVersion bump and self-disable
+  protection, and account statistics.
 
 Roles:
 
@@ -318,6 +321,11 @@ Identity Service:
 `/identity/admin/**`
 -> ADMIN
 
+Employer/Job/Recruitment/Resume/Matching/Notification Services:
+
+`/service/admin/**`
+-> ADMIN via trusted gateway headers and service-level role checks
+
 Candidate Service:
 
 candidate profile modification
@@ -334,6 +342,18 @@ application status changes
 -> recruiter must be authorized for related employer/job
 
 Detailed ownership/business authorization must NOT be centralized in Gateway.
+
+POST-P0 Phase B Admin backend:
+
+- Gateway remains the authentication boundary and propagates trusted
+  `X-Account-Id`/`X-Account-Role` headers.
+- Owning business services enforce Admin authorization for `/admin/**` entry
+  points by requiring a valid UUID `X-Account-Id` and `X-Account-Role=ADMIN`.
+- Admin APIs are read-only across business services; only Identity Admin may
+  mutate account enabled state.
+- Admin list APIs use 0-based pagination with default `size=20` and max
+  `size=100`.
+- Services must not query other services' databases for Admin features.
 
 ---
 
@@ -427,6 +447,8 @@ Do not put employer/company data directly inside Identity account entities.
 
 Identity owns account identity only.
 
+Employer Admin supports read-only company list/detail/statistics.
+
 ---
 
 # 18. Job Domain Boundary
@@ -436,6 +458,9 @@ Job Service owns `Job` entities and job lifecycle.
 Initial job search uses MySQL.
 
 Do not introduce Elasticsearch before P0 completion.
+
+Job Admin supports read-only job list/detail/statistics across
+`DRAFT/PUBLISHED/CLOSED` without changing public published-job behavior.
 
 ---
 
@@ -451,6 +476,8 @@ Resume Service owns:
 Candidate may own multiple resumes.
 
 Each upload is immutable in V1.
+
+Resume Admin is metadata-only (no unrestricted Admin binary/CV download).
 
 ---
 
@@ -470,6 +497,9 @@ Application must retain exact:
 - `resumeId`;
 
 from submission.
+
+Recruitment Admin provides read-only application/interview list/detail/statistics
+and does not mutate Application status.
 
 ---
 
@@ -498,6 +528,9 @@ Locked weights:
 
 Candidate preference scoring is separate and not included.
 
+Matching Admin reads stored match results only and does not trigger parsing,
+Gemini calls, or new match generation.
+
 ---
 
 # 22. Notification Domain Boundary
@@ -513,6 +546,9 @@ P0 priority:
 in-app notifications.
 
 Do not turn Notification into an email-only service.
+
+Notification Admin supports read-only notification list/detail/statistics and
+does not create arbitrary notifications.
 
 ---
 
