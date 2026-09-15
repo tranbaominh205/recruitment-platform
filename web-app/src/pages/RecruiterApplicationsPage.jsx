@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { getOwnedJob } from '../services/jobService'
 import { getApiErrorMessage } from '../services/apiError'
 import { getApplicationsForJob } from '../services/recruitmentService'
+import { createRecruitmentJobApplicationsSseConnection } from '../services/recruitmentSseService'
 
 const PAGE_SIZE = 20
 const STATUS_OPTIONS = [
@@ -33,6 +34,7 @@ function RecruiterApplicationsPage() {
   const [jobError, setJobError] = useState('')
   const [applicationError, setApplicationError] = useState('')
   const [isApplicationsLoading, setIsApplicationsLoading] = useState(true)
+  const [refreshVersion, setRefreshVersion] = useState(0)
 
   useEffect(() => {
     let isActive = true
@@ -60,6 +62,21 @@ function RecruiterApplicationsPage() {
 
   useEffect(() => {
     let isActive = true
+    const connection = createRecruitmentJobApplicationsSseConnection(jobId, (payload) => {
+      if (!isActive || payload.jobId !== jobId) {
+        return
+      }
+      setRefreshVersion((currentVersion) => currentVersion + 1)
+    })
+
+    return () => {
+      isActive = false
+      connection?.close()
+    }
+  }, [jobId])
+
+  useEffect(() => {
+    let isActive = true
 
     async function loadApplications() {
       setApplicationError('')
@@ -78,9 +95,23 @@ function RecruiterApplicationsPage() {
       try {
         const result = await getApplicationsForJob(jobId, params)
         if (isActive) {
+          const nextTotalPages = result.totalPages || 0
+          const nextTotalElements = result.totalElements || 0
+          setTotalPages(nextTotalPages)
+          setTotalElements(nextTotalElements)
+
+          if (nextTotalPages === 0 && page !== 0) {
+            setPage(0)
+            return
+          }
+
+          const lastAvailablePage = nextTotalPages - 1
+          if (nextTotalPages > 0 && page > lastAvailablePage) {
+            setPage(lastAvailablePage)
+            return
+          }
+
           setApplications(result.content || [])
-          setTotalPages(result.totalPages || 0)
-          setTotalElements(result.totalElements || 0)
         }
       } catch (requestError) {
         if (isActive) {
@@ -101,7 +132,7 @@ function RecruiterApplicationsPage() {
     return () => {
       isActive = false
     }
-  }, [jobId, statusFilter, sortDirection, page])
+  }, [jobId, statusFilter, sortDirection, page, refreshVersion])
 
   const hasActiveStatusFilter = statusFilter !== ''
   const pageLabel = totalPages > 0 ? `Page ${page + 1} of ${totalPages}` : 'Page 0 of 0'

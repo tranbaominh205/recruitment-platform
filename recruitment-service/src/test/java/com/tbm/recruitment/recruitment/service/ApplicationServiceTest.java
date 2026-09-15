@@ -15,11 +15,17 @@ import static org.mockito.Mockito.when;
 import com.tbm.recruitment.recruitment.client.CandidateClient;
 import com.tbm.recruitment.recruitment.client.JobClient;
 import com.tbm.recruitment.recruitment.client.ResumeClient;
+import com.tbm.recruitment.recruitment.dto.request.CreateApplicationRequest;
+import com.tbm.recruitment.recruitment.dto.request.UpdateApplicationStatusRequest;
 import com.tbm.recruitment.recruitment.dto.response.ApplicationResponse;
+import com.tbm.recruitment.recruitment.dto.response.CandidateSummaryResponse;
 import com.tbm.recruitment.recruitment.dto.response.JobSummaryResponse;
 import com.tbm.recruitment.recruitment.dto.response.PageResponse;
+import com.tbm.recruitment.recruitment.dto.response.ResumeSummaryResponse;
 import com.tbm.recruitment.recruitment.entity.Application;
+import com.tbm.recruitment.recruitment.enums.ApplicationListChange;
 import com.tbm.recruitment.recruitment.enums.ApplicationStatus;
+import com.tbm.recruitment.recruitment.event.ApplicationListChangedEvent;
 import com.tbm.recruitment.recruitment.exception.AppException;
 import com.tbm.recruitment.recruitment.exception.ErrorCode;
 import com.tbm.recruitment.recruitment.mapper.ApplicationMapper;
@@ -44,6 +50,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @ExtendWith(MockitoExtension.class)
 class ApplicationServiceTest {
@@ -51,6 +58,7 @@ class ApplicationServiceTest {
   @Mock private ApplicationRepository applicationRepository;
   @Mock private ApplicationMapper applicationMapper;
   @Mock private ApplicationEventPublisher applicationEventPublisher;
+  @Mock private ApplicationSseService applicationSseService;
   @Mock private CandidateClient candidateClient;
   @Mock private ResumeClient resumeClient;
   @Mock private JobClient jobClient;
@@ -64,6 +72,7 @@ class ApplicationServiceTest {
             applicationRepository,
             applicationMapper,
             applicationEventPublisher,
+            applicationSseService,
             candidateClient,
             resumeClient,
             jobClient);
@@ -274,6 +283,246 @@ class ApplicationServiceTest {
     assertTrue(specificationHasOnlyJobConstraint(specification, jobId));
   }
 
+  @Test
+  void recruiterCanSubscribeToOwnedJobEvents() {
+    UUID jobId = UUID.randomUUID();
+    String accountId = UUID.randomUUID().toString();
+    SseEmitter emitter = new SseEmitter();
+    when(jobClient.getOwnedJob(eq(jobId), eq(accountId), eq("RECRUITER")))
+        .thenReturn(new JobSummaryResponse(jobId));
+    when(applicationSseService.subscribe(jobId)).thenReturn(emitter);
+
+    SseEmitter result = service.subscribeToOwnedJobEvents(jobId, accountId, "RECRUITER");
+
+    assertEquals(emitter, result);
+    InOrder inOrder = inOrder(jobClient, applicationSseService);
+    inOrder.verify(jobClient).getOwnedJob(jobId, accountId, "RECRUITER");
+    inOrder.verify(applicationSseService).subscribe(jobId);
+  }
+
+  @Test
+  void candidateCannotSubscribeToOwnedJobEvents() {
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                service.subscribeToOwnedJobEvents(
+                    UUID.randomUUID(), UUID.randomUUID().toString(), "CANDIDATE"));
+
+    assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+    verifyNoInteractions(jobClient);
+    verifyNoInteractions(applicationSseService);
+  }
+
+  @Test
+  void adminCannotSubscribeToOwnedJobEvents() {
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () ->
+                service.subscribeToOwnedJobEvents(
+                    UUID.randomUUID(), UUID.randomUUID().toString(), "ADMIN"));
+
+    assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+    verifyNoInteractions(jobClient);
+    verifyNoInteractions(applicationSseService);
+  }
+
+  @Test
+  void nonOwnerRecruiterCannotSubscribeToOwnedJobEvents() {
+    UUID jobId = UUID.randomUUID();
+    String accountId = UUID.randomUUID().toString();
+    when(jobClient.getOwnedJob(jobId, accountId, "RECRUITER"))
+        .thenThrow(new AppException(ErrorCode.FORBIDDEN));
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () -> service.subscribeToOwnedJobEvents(jobId, accountId, "RECRUITER"));
+
+    assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+    verify(applicationSseService, never()).subscribe(any(UUID.class));
+  }
+
+  @Test
+  void submitApplicationPublishesSubmittedListChangedEvent() {
+    UUID accountId = UUID.randomUUID();
+    UUID candidateId = UUID.randomUUID();
+    UUID resumeId = UUID.randomUUID();
+    UUID jobId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    CreateApplicationRequest request = new CreateApplicationRequest(jobId, resumeId);
+    Application saved =
+        Application.builder()
+            .id(applicationId)
+            .candidateId(candidateId)
+            .jobId(jobId)
+            .resumeId(resumeId)
+            .status(ApplicationStatus.SUBMITTED)
+            .submittedAt(Instant.now())
+            .build();
+
+    when(candidateClient.getMyProfile(accountId.toString(), "CANDIDATE"))
+        .thenReturn(new CandidateSummaryResponse(candidateId));
+    when(resumeClient.getMyResume(resumeId, accountId.toString(), "CANDIDATE"))
+        .thenReturn(new ResumeSummaryResponse(resumeId));
+    when(jobClient.getPublishedJob(jobId)).thenReturn(new JobSummaryResponse(jobId));
+    when(applicationRepository.save(any(Application.class))).thenReturn(saved);
+    when(applicationMapper.toApplicationResponse(saved))
+        .thenReturn(
+            new ApplicationResponse(
+                saved.getId(),
+                saved.getCandidateId(),
+                saved.getJobId(),
+                saved.getResumeId(),
+                saved.getStatus(),
+                saved.getSubmittedAt()));
+
+    service.submitApplication(accountId.toString(), "CANDIDATE", request);
+
+    ApplicationListChangedEvent event = capturePublishedListChangedEvent();
+    assertEquals(jobId, event.jobId());
+    assertEquals(applicationId, event.applicationId());
+    assertEquals(ApplicationListChange.SUBMITTED, event.change());
+  }
+
+  @Test
+  void withdrawApplicationPublishesWithdrawnListChangedEvent() {
+    UUID accountId = UUID.randomUUID();
+    UUID candidateId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID jobId = UUID.randomUUID();
+    UUID resumeId = UUID.randomUUID();
+    Application application =
+        Application.builder()
+            .id(applicationId)
+            .candidateId(candidateId)
+            .jobId(jobId)
+            .resumeId(resumeId)
+            .status(ApplicationStatus.SCREENING)
+            .submittedAt(Instant.now())
+            .build();
+
+    when(candidateClient.getMyProfile(accountId.toString(), "CANDIDATE"))
+        .thenReturn(new CandidateSummaryResponse(candidateId));
+    when(applicationRepository.findByIdAndCandidateId(applicationId, candidateId))
+        .thenReturn(java.util.Optional.of(application));
+    when(applicationRepository.save(application)).thenReturn(application);
+    when(applicationMapper.toApplicationResponse(application))
+        .thenReturn(
+            new ApplicationResponse(
+                application.getId(),
+                application.getCandidateId(),
+                application.getJobId(),
+                application.getResumeId(),
+                application.getStatus(),
+                application.getSubmittedAt()));
+
+    service.withdrawApplication(applicationId, accountId.toString(), "CANDIDATE");
+
+    ApplicationListChangedEvent event = capturePublishedListChangedEvent();
+    assertEquals(jobId, event.jobId());
+    assertEquals(applicationId, event.applicationId());
+    assertEquals(ApplicationListChange.WITHDRAWN, event.change());
+  }
+
+  @Test
+  void updateApplicationStatusPublishesStatusChangedListEvent() {
+    UUID accountId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID jobId = UUID.randomUUID();
+    Application application =
+        Application.builder()
+            .id(applicationId)
+            .candidateId(UUID.randomUUID())
+            .jobId(jobId)
+            .resumeId(UUID.randomUUID())
+            .status(ApplicationStatus.SUBMITTED)
+            .submittedAt(Instant.now())
+            .build();
+
+    when(applicationRepository.findById(applicationId))
+        .thenReturn(java.util.Optional.of(application));
+    when(jobClient.getOwnedJob(jobId, accountId.toString(), "RECRUITER"))
+        .thenReturn(new JobSummaryResponse(jobId));
+    when(applicationRepository.save(application)).thenReturn(application);
+    when(applicationMapper.toApplicationResponse(application))
+        .thenReturn(
+            new ApplicationResponse(
+                application.getId(),
+                application.getCandidateId(),
+                application.getJobId(),
+                application.getResumeId(),
+                application.getStatus(),
+                application.getSubmittedAt()));
+
+    service.updateApplicationStatus(
+        applicationId,
+        accountId.toString(),
+        "RECRUITER",
+        new UpdateApplicationStatusRequest(ApplicationStatus.SCREENING));
+
+    ApplicationListChangedEvent event = capturePublishedListChangedEvent();
+    assertEquals(jobId, event.jobId());
+    assertEquals(applicationId, event.applicationId());
+    assertEquals(ApplicationListChange.STATUS_CHANGED, event.change());
+  }
+
+  @Test
+  void failedValidationDoesNotPublishRealtimeEvent() {
+    UUID accountId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID jobId = UUID.randomUUID();
+    Application application =
+        Application.builder()
+            .id(applicationId)
+            .candidateId(UUID.randomUUID())
+            .jobId(jobId)
+            .resumeId(UUID.randomUUID())
+            .status(ApplicationStatus.REJECTED)
+            .submittedAt(Instant.now())
+            .build();
+
+    when(applicationRepository.findById(applicationId))
+        .thenReturn(java.util.Optional.of(application));
+    when(jobClient.getOwnedJob(jobId, accountId.toString(), "RECRUITER"))
+        .thenReturn(new JobSummaryResponse(jobId));
+
+    assertThrows(
+        AppException.class,
+        () ->
+            service.updateApplicationStatus(
+                applicationId,
+                accountId.toString(),
+                "RECRUITER",
+                new UpdateApplicationStatusRequest(ApplicationStatus.SCREENING)));
+
+    verify(applicationEventPublisher, never()).publishEvent(any(ApplicationListChangedEvent.class));
+  }
+
+  @Test
+  void failedPersistenceDoesNotPublishRealtimeEvent() {
+    UUID accountId = UUID.randomUUID();
+    UUID candidateId = UUID.randomUUID();
+    UUID resumeId = UUID.randomUUID();
+    UUID jobId = UUID.randomUUID();
+    CreateApplicationRequest request = new CreateApplicationRequest(jobId, resumeId);
+
+    when(candidateClient.getMyProfile(accountId.toString(), "CANDIDATE"))
+        .thenReturn(new CandidateSummaryResponse(candidateId));
+    when(resumeClient.getMyResume(resumeId, accountId.toString(), "CANDIDATE"))
+        .thenReturn(new ResumeSummaryResponse(resumeId));
+    when(jobClient.getPublishedJob(jobId)).thenReturn(new JobSummaryResponse(jobId));
+    when(applicationRepository.save(any(Application.class)))
+        .thenThrow(new RuntimeException("db-failed"));
+
+    assertThrows(
+        RuntimeException.class,
+        () -> service.submitApplication(accountId.toString(), "CANDIDATE", request));
+
+    verify(applicationEventPublisher, never()).publishEvent(any(ApplicationListChangedEvent.class));
+  }
+
   private void stubOwnedJobAndRepository(UUID jobId, Application application) {
     ApplicationResponse mapped =
         new ApplicationResponse(
@@ -294,6 +543,17 @@ class ApplicationServiceTest {
     ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
     verify(applicationRepository).findAll(any(Specification.class), pageableCaptor.capture());
     return pageableCaptor.getValue();
+  }
+
+  private ApplicationListChangedEvent capturePublishedListChangedEvent() {
+    ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+    verify(applicationEventPublisher, org.mockito.Mockito.atLeastOnce())
+        .publishEvent(eventCaptor.capture());
+    return eventCaptor.getAllValues().stream()
+        .filter(ApplicationListChangedEvent.class::isInstance)
+        .map(ApplicationListChangedEvent.class::cast)
+        .findFirst()
+        .orElseThrow();
   }
 
   @SuppressWarnings("unchecked")

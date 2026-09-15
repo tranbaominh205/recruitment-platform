@@ -12,7 +12,9 @@ import com.tbm.recruitment.recruitment.dto.response.PageResponse;
 import com.tbm.recruitment.recruitment.dto.response.ResumeSummaryResponse;
 import com.tbm.recruitment.recruitment.dto.response.SubmittedResumeContent;
 import com.tbm.recruitment.recruitment.entity.Application;
+import com.tbm.recruitment.recruitment.enums.ApplicationListChange;
 import com.tbm.recruitment.recruitment.enums.ApplicationStatus;
+import com.tbm.recruitment.recruitment.event.ApplicationListChangedEvent;
 import com.tbm.recruitment.recruitment.event.ApplicationStatusChangedEvent;
 import com.tbm.recruitment.recruitment.exception.AppException;
 import com.tbm.recruitment.recruitment.exception.ErrorCode;
@@ -34,6 +36,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +46,7 @@ public class ApplicationService {
   ApplicationRepository applicationRepository;
   ApplicationMapper applicationMapper;
   ApplicationEventPublisher applicationEventPublisher;
+  ApplicationSseService applicationSseService;
 
   CandidateClient candidateClient;
   ResumeClient resumeClient;
@@ -70,8 +74,16 @@ public class ApplicationService {
             .build();
 
     Application savedApplication = applicationRepository.save(application);
+    publishApplicationListChangedEvent(savedApplication, ApplicationListChange.SUBMITTED);
 
     return applicationMapper.toApplicationResponse(savedApplication);
+  }
+
+  public SseEmitter subscribeToOwnedJobEvents(
+      UUID jobId, String accountIdHeader, String accountRole) {
+    requireRecruiterAccount(accountIdHeader, accountRole);
+    verifyOwnedJobAccess(jobId, accountIdHeader, accountRole);
+    return applicationSseService.subscribe(jobId);
   }
 
   public PageResponse<ApplicationResponse> getMyApplications(
@@ -105,7 +117,7 @@ public class ApplicationService {
 
     validatePagination(page, size);
 
-    jobClient.getOwnedJob(jobId, accountIdHeader, accountRole);
+    verifyOwnedJobAccess(jobId, accountIdHeader, accountRole);
 
     ApplicationStatus statusFilter = parseStatus(status);
     Sort.Direction submittedAtDirection = parseSortDirection(sortDirection);
@@ -178,6 +190,7 @@ public class ApplicationService {
     Application savedApplication = applicationRepository.save(application);
 
     publishApplicationStatusChangedEvent(savedApplication, previousStatus);
+    publishApplicationListChangedEvent(savedApplication, ApplicationListChange.STATUS_CHANGED);
 
     return applicationMapper.toApplicationResponse(savedApplication);
   }
@@ -199,6 +212,7 @@ public class ApplicationService {
     Application savedApplication = applicationRepository.save(application);
 
     publishApplicationStatusChangedEvent(savedApplication, previousStatus);
+    publishApplicationListChangedEvent(savedApplication, ApplicationListChange.WITHDRAWN);
 
     return applicationMapper.toApplicationResponse(savedApplication);
   }
@@ -250,6 +264,17 @@ public class ApplicationService {
             Instant.now());
 
     applicationEventPublisher.publishEvent(event);
+  }
+
+  private void publishApplicationListChangedEvent(
+      Application application, ApplicationListChange change) {
+    ApplicationListChangedEvent event =
+        new ApplicationListChangedEvent(application.getJobId(), application.getId(), change);
+    applicationEventPublisher.publishEvent(event);
+  }
+
+  private void verifyOwnedJobAccess(UUID jobId, String accountIdHeader, String accountRole) {
+    jobClient.getOwnedJob(jobId, accountIdHeader, accountRole);
   }
 
   private void validatePagination(int page, int size) {
