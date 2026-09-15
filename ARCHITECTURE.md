@@ -226,12 +226,13 @@ Current responsibilities:
 - logout/revocation via invalidated JTI registry;
 - roles;
 - account-level authorization;
+- authoritative DB-backed admin permission model;
 - authoritative current-account endpoint (`/identity/me`);
+- `/identity/me` exposes current permissions for frontend capability display;
 - self password change with account-wide token invalidation via `tokenVersion`;
 - environment-driven initial ADMIN bootstrap capability;
-- Admin account management APIs for paginated/filterable account reads,
-  account detail, enable/disable mutation with tokenVersion bump and self-disable
-  protection, and account statistics.
+- Admin account management and session-revocation APIs;
+- Admin permission checks remain authoritative in DB state and are not JWT claims.
 
 Roles:
 
@@ -303,10 +304,18 @@ Gateway may propagate trusted identity context such as:
 - X-Account-Id
 - X-Account-Email
 - X-Account-Role
+- X-Account-Permissions
 
-Gateway MUST overwrite externally supplied values of trusted headers.
+`X-Account-Permissions` is a comma-delimited list of DB-authoritative
+`AdminPermission` names from Identity Service. It is not stored in the JWT and
+must not be trusted if sent by a client. Gateway MUST overwrite externally
+supplied values of trusted headers, strip spoofed values, and only forward the
+server-generated identity context.
 
 Never trust client-supplied identity headers.
+
+`/identity/me` exposes the current authoritative permissions for frontend
+capability display. Non-ADMIN responses return an empty permissions list.
 
 ---
 
@@ -314,17 +323,22 @@ Never trust client-supplied identity headers.
 
 Business services own authorization.
 
+Gateway authenticates and sanitizes identity headers; the owning business
+service authorizes the action. This remains true for moderation and admin
+operations.
+
 Examples:
 
 Identity Service:
 
 `/identity/admin/**`
--> ADMIN
+-> ADMIN + DB-backed permission checks when the action requires a specific admin permission
 
 Employer/Job/Recruitment/Resume/Matching/Notification Services:
 
 `/service/admin/**`
--> ADMIN via trusted gateway headers and service-level role checks
+-> ADMIN via trusted gateway headers and service-level authorization checks,
+   including permission checks for moderation endpoints
 
 Candidate Service:
 
@@ -343,15 +357,18 @@ application status changes
 
 Detailed ownership/business authorization must NOT be centralized in Gateway.
 
-POST-P0 Phase B Admin backend:
+POST-P0 Admin authorization model:
 
-- Gateway remains the authentication boundary and propagates trusted
-  `X-Account-Id`/`X-Account-Role` headers.
-- Owning business services enforce Admin authorization for `/admin/**` entry
-  points by requiring a valid UUID `X-Account-Id` and `X-Account-Role=ADMIN`.
-- Admin APIs are read-only across business services; only Identity Admin may
-  mutate account enabled state.
-- Admin list APIs use 0-based pagination with default `size=20` and max
+- Account still has one primary `Role` only: `CANDIDATE`, `RECRUITER`, or `ADMIN`.
+- `ADMIN` also owns a `Set<AdminPermission>` stored in `identity_db`.
+- Permission values are authoritative DB state, not JWT claims.
+- Gateway propagates sanitized trusted headers including `X-Account-Permissions`.
+- Owning business services authorize moderation endpoints using the trusted
+  `X-Account-Id`, `X-Account-Role`, and `X-Account-Permissions` values along with
+  DB-backed permission verification when needed.
+- Business Admin endpoints are not all read-only; moderation endpoints for jobs
+  and companies mutate domain state under ADMIN + specific permission checks.
+- Admin list APIs still use 0-based pagination with default `size=20` and max
   `size=100`.
 - Services must not query other services' databases for Admin features.
 
@@ -447,7 +464,17 @@ Do not put employer/company data directly inside Identity account entities.
 
 Identity owns account identity only.
 
-Employer Admin supports read-only company list/detail/statistics.
+Employer Service persists company moderation and verification as independent
+dimensions:
+
+- `CompanyModerationStatus`: `ACTIVE` / `SUSPENDED`
+- `CompanyVerificationStatus`: `UNVERIFIED` / `VERIFIED` / `REJECTED`
+
+Company moderation metadata includes `moderationReason`, `moderatedByAccountId`,
+and `moderatedAt`. Company verification metadata includes `verificationReason`,
+`verifiedByAccountId`, and `verifiedAt`.
+
+No hard delete of company records or moderation history is allowed.
 
 ---
 
@@ -459,8 +486,21 @@ Initial job search uses MySQL.
 
 Do not introduce Elasticsearch before P0 completion.
 
-Job Admin supports read-only job list/detail/statistics across
-`DRAFT/PUBLISHED/CLOSED` without changing public published-job behavior.
+`Job` retains a separate business lifecycle and moderation lifecycle:
+
+- `JobStatus`: `DRAFT` / `PUBLISHED` / `CLOSED`
+- `JobModerationStatus`: `ACTIVE` / `HIDDEN` / `REMOVED`
+
+Public visibility is:
+
+- `status == PUBLISHED`
+- `moderationStatus == ACTIVE`
+
+A suspended company is enforced at the Job Service boundary: suspended
+companies cannot create, update draft, or publish draft jobs, and the service
+returns `COMPANY_SUSPENDED` while preserving historical job data and allowing
+authorized owner/history access. Job Service must not query `employer_db`
+directly.
 
 ---
 

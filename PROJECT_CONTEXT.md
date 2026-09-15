@@ -49,9 +49,77 @@ Can:
 
 ## Admin
 
-Can perform basic administrative account operations.
+Admin is the platform oversight role for account operations, business moderation,
+and operational visibility across the platform.
 
 Admin is NOT publicly self-registered.
+
+The system keeps exactly one primary role per `Account`:
+
+- CANDIDATE
+- RECRUITER
+- ADMIN
+
+`ADMIN` additionally owns an authoritative database-backed set of
+`AdminPermission` values. These are stored in Identity Service state and are
+returned by `/identity/me` and identity introspection for frontend capability
+checks and backend authorization decisions.
+
+Current `AdminPermission` values:
+
+- ACCOUNT_DISABLE
+- ACCOUNT_REVOKE_SESSIONS
+- JOB_MODERATE
+- COMPANY_MODERATE
+- COMPANY_VERIFY
+
+Permissions are not JWT claims. They are not trusted if they are merely sent by
+clients. The Gateway strips and overwrites spoofed trusted headers, and the
+owning business service re-checks the authoritative permission state before
+allowing moderation or administrative actions.
+
+Current Admin responsibilities include:
+
+- account oversight and enable/disable flows;
+- password/session invalidation and revoke-all-session workflows;
+- moderation of jobs and companies;
+- verification of companies;
+- operational dashboards for identities, jobs, companies, applications,
+  interviews, resumes, matching, and notifications.
+
+Admin capability checks are UX only when used in the frontend. Backend
+authorization remains mandatory and authoritative.
+
+## Job and company moderation
+
+The platform now has a separate moderation lifecycle for jobs and a separate
+moderation/verification model for companies.
+
+Job lifecycle remains:
+
+- `DRAFT`
+- `PUBLISHED`
+- `CLOSED`
+
+Job moderation is independent:
+
+- `ACTIVE`
+- `HIDDEN`
+- `REMOVED`
+
+A job is publicly visible only when:
+
+- business status is `PUBLISHED`
+- moderation status is `ACTIVE`
+
+Company lifecycle includes moderation and verification as independent states:
+
+- moderation: `ACTIVE` / `SUSPENDED`
+- verification: `UNVERIFIED` / `VERIFIED` / `REJECTED`
+
+A suspended company cannot create, update DRAFT, or publish DRAFT jobs. The Job
+Service blocks those mutations with `COMPANY_SUSPENDED` while preserving the
+company's history and allowing closed or owned historical reads.
 
 ---
 
@@ -290,6 +358,22 @@ Examples:
 - Elasticsearch;
 - advanced observability;
 - additional AI improvements.
+
+## Post-P0 roadmap — current remaining work
+
+The platform is now past P0 and into the next operational stabilization wave:
+
+- Step 4/7 — D1 Candidate Job Recommendations
+  - candidate-facing job recommendations using CandidateProfile preferences;
+  - completely separate from recruiter Resume–Job matching.
+- Step 5/7 — D2 Notification Usability
+  - read/unread state and more useful navigation/reference behavior.
+- Step 6/7 — D3 Recruiter Applicant Filtering/Sorting
+  - recruiter-side filtering and sorting improvements without weakening
+    frozen application status rules.
+- Step 7/7 — Phase E Final Regression + Documentation
+  - backend/frontend regression, security negative cases, startup/runtime checks,
+    and final documentation freeze.
 
 ---
 

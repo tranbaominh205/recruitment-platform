@@ -10,48 +10,193 @@ Recruitment Platform Capstone
 
 Current phase:
 
-POST-P0 PHASE B — ADMIN BACKEND COMPLETE
+POST-P0 PLATFORM ADMINISTRATION COMPLETE
 
-POST-P0 Phase B Admin backend is now implemented across Identity, Employer,
-Job, Recruitment, Resume, Matching, and Notification services while preserving
-existing P0 candidate/recruiter/public behavior.
+Step 3/7 — POST-P0 Admin oversight + moderation — DONE
+Step 4/7 — D1 Candidate Job Recommendations — NEXT
+Step 5/7 — D2 Notification Usability — PLANNED
+Step 6/7 — D3 Recruiter Applicant Filtering/Sorting — PLANNED
+Step 7/7 — Phase E Final Regression + Documentation — PLANNED
 
-Current state includes:
+Latest verified main SHA:
 
-- Identity Admin:
-    - paginated/filterable `GET /identity/admin/accounts`;
-    - `GET /identity/admin/accounts/{accountId}`;
-    - `PATCH /identity/admin/accounts/{accountId}/enabled`;
-    - `GET /identity/admin/statistics`;
-    - enabled-state change increments `Account.tokenVersion` exactly once; same
-      state is no-op; current ADMIN cannot disable itself;
-    - method security remains with `@PreAuthorize("hasRole('ADMIN')")` defense-in-depth.
-- Employer Admin:
-    - read-only company list/detail/statistics.
-- Job Admin:
-    - read-only job list/detail/statistics including `DRAFT/PUBLISHED/CLOSED`;
-    - existing public published-job behavior unchanged.
-- Recruitment Admin:
-    - read-only application/interview list/detail/statistics;
-    - no Admin status mutation.
-- Resume Admin:
-    - metadata-only resume list/detail/statistics;
-    - no unrestricted Admin binary download.
-- Matching Admin:
-    - read-only stored-result list/detail/statistics;
-    - no Admin-triggered parsing/Gemini/new matching.
-- Notification Admin:
-    - read-only notification list/detail/statistics;
-    - no arbitrary Admin notification creation.
-- For business-service Admin APIs:
-    - require valid UUID `X-Account-Id`;
-    - require `X-Account-Role=ADMIN`;
-    - non-ADMIN follows existing `FORBIDDEN` behavior;
-    - list APIs use 0-based pagination, default size `20`, max size `100`.
+`adfe3ee031b6ac362d69230a2fdf16b7bd9ac801`
 
-All historical Day 1-6 architecture/domain constraints remain unchanged,
-including frozen recruitment statuses, selected `resumeId` immutability, and
-Resume–Job deterministic matching invariants.
+Completed before this checkpoint:
+
+PHASE A — Identity hardening/completion
+DONE
+
+Identity includes:
+- primary role remains exactly:
+  CANDIDATE / RECRUITER / ADMIN
+- JWT jti
+- authoritative DB-backed introspection
+- enabled validation
+- issuer validation
+- logout/JTI revocation
+- refresh rotation and replay protection
+- refresh-safe decoder
+- tokenVersion
+- revoke-all-session semantics
+- password change invalidates previous sessions
+- /identity/me
+- environment-driven bootstrap ADMIN
+- method-security foundation
+
+PHASE B — Admin backend oversight
+DONE
+
+Admin backend exists in owning services:
+- Identity accounts
+- Employer companies
+- Job jobs
+- Recruitment applications/interviews
+- Resume metadata
+- Matching stored results
+- Notification records
+
+PHASE C — Admin frontend oversight/dashboard
+DONE
+
+Admin routes exist for:
+- dashboard
+- accounts
+- companies
+- jobs
+- applications
+- interviews
+- resumes
+- matching
+- notifications
+
+POST-P0 PLATFORM ADMINISTRATION COMPLETED
+
+C+1 — Admin permission foundation
+DONE
+
+Architecture:
+- Account still has one primary Role.
+- Do NOT introduce Set<Role>.
+- ADMIN additionally owns Set<AdminPermission>.
+- current AdminPermission values:
+  ACCOUNT_DISABLE
+  ACCOUNT_REVOKE_SESSIONS
+  JOB_MODERATE
+  COMPANY_MODERATE
+  COMPANY_VERIFY
+- permissions are authoritative DB state.
+- permissions are NOT JWT claims.
+- Identity introspection returns current permissions.
+- Gateway propagates trusted:
+  X-Account-Id
+  X-Account-Email
+  X-Account-Role
+  X-Account-Permissions
+- Gateway strips/overwrites spoofed trusted headers.
+- owning business service performs authorization.
+- /identity/me now also returns authoritative current permissions
+  for frontend capability display.
+- non-ADMIN /me returns empty permissions.
+- bootstrap ADMIN is idempotently backfilled with all current permissions.
+- Admin can revoke all target account sessions by incrementing target tokenVersion.
+
+C+2.1 — Job Moderation Backend
+DONE
+
+Job business lifecycle remains:
+DRAFT / PUBLISHED / CLOSED
+
+Separate moderation lifecycle:
+ACTIVE / HIDDEN / REMOVED
+
+Job moderation metadata includes:
+- moderationReason
+- moderatedByAccountId
+- moderatedAt
+
+Rules:
+- public Job visibility requires:
+  status == PUBLISHED
+  AND moderationStatus == ACTIVE
+- HIDDEN/REMOVED does NOT mean CLOSED.
+- no hard delete.
+- recruiter retains historical/ownership visibility.
+- moderation mutation requires ADMIN + JOB_MODERATE.
+
+C+2.2A — Company Moderation + Verification
+DONE
+
+Company moderation:
+ACTIVE / SUSPENDED
+
+Company verification:
+UNVERIFIED / VERIFIED / REJECTED
+
+These are separate independent dimensions.
+
+Moderation metadata:
+- moderationReason
+- moderatedByAccountId
+- moderatedAt
+
+Verification metadata:
+- verificationReason
+- verifiedByAccountId
+- verifiedAt
+
+Rules:
+- moderation mutation requires ADMIN + COMPANY_MODERATE
+- verification mutation requires ADMIN + COMPANY_VERIFY
+- no hard delete
+- recruiter company remains readable even when SUSPENDED
+
+C+2.2B — Company Suspension → Job Enforcement
+DONE
+
+Company moderation status is exposed through the Employer → Job REST contract.
+
+For ACTIVE company:
+- create Job allowed
+- update DRAFT allowed
+- publish DRAFT allowed
+
+For SUSPENDED company:
+- create Job blocked
+- update DRAFT blocked
+- publish DRAFT blocked
+- return Job business conflict COMPANY_SUSPENDED
+- get /mine remains allowed
+- ownership/history remains allowed
+- close PUBLISHED Job remains allowed
+
+Do NOT automatically mutate Job.status or Job.moderationStatus when Company
+is suspended.
+Do NOT query employer_db directly from Job Service.
+
+C+2.3 — Admin Moderation Frontend
+DONE
+
+Identity /me exposes authoritative permissions.
+
+Admin Jobs UI:
+- moderation filter
+- business status and moderation status shown separately
+- Job moderation detail/actions
+- JOB_MODERATE-aware controls
+
+Admin Companies UI:
+- moderation filter
+- verification filter
+- moderation and verification metadata
+- COMPANY_MODERATE-aware controls
+- COMPANY_VERIFY-aware controls
+
+Frontend capability checks are UX only.
+Backend authorization remains mandatory and authoritative.
+
+Latest verified merge:
+adfe3ee031b6ac362d69230a2fdf16b7bd9ac801
 
 ---
 
