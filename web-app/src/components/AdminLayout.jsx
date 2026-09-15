@@ -24,6 +24,8 @@ function AdminLayout() {
         <NavLink to="/admin/applications">Applications</NavLink>
         <NavLink to="/admin/interviews">Interviews</NavLink>
         <NavLink to="/admin/resumes">Resumes</NavLink>
+        <NavLink to="/admin/matching">Matching</NavLink>
+        <NavLink to="/admin/notifications">Notifications</NavLink>
       </nav>
       <Outlet />
     </div>
