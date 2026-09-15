@@ -1,17 +1,21 @@
 package com.tbm.recruitment.job.controller;
 
+import com.tbm.recruitment.job.dto.request.UpdateJobModerationRequest;
 import com.tbm.recruitment.job.dto.response.AdminJobStatisticsResponse;
 import com.tbm.recruitment.job.dto.response.ApiResponse;
 import com.tbm.recruitment.job.dto.response.JobResponse;
 import com.tbm.recruitment.job.dto.response.PageResponse;
 import com.tbm.recruitment.job.exception.ErrorCode;
 import com.tbm.recruitment.job.service.JobService;
+import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,12 +35,15 @@ public class AdminJobController {
       @RequestHeader(value = "X-Account-Role", required = false) String accountRole,
       @RequestParam(required = false) String keyword,
       @RequestParam(required = false) String status,
+      @RequestParam(required = false) String moderationStatus,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size) {
     return ApiResponse.<PageResponse<JobResponse>>builder()
         .code(ErrorCode.SUCCESS.getCode())
         .message(ErrorCode.SUCCESS.getMessage())
-        .result(jobService.getAdminJobs(accountId, accountRole, keyword, status, page, size))
+        .result(
+            jobService.getAdminJobs(
+                accountId, accountRole, keyword, status, moderationStatus, page, size))
         .build();
   }
 
@@ -49,6 +56,22 @@ public class AdminJobController {
         .code(ErrorCode.SUCCESS.getCode())
         .message(ErrorCode.SUCCESS.getMessage())
         .result(jobService.getAdminJobById(jobId, accountId, accountRole))
+        .build();
+  }
+
+  @PatchMapping("/jobs/{jobId}/moderation")
+  public ApiResponse<JobResponse> moderateJob(
+      @PathVariable UUID jobId,
+      @RequestHeader(value = "X-Account-Id", required = false) String accountId,
+      @RequestHeader(value = "X-Account-Role", required = false) String accountRole,
+      @RequestHeader(value = "X-Account-Permissions", required = false) String accountPermissions,
+      @Valid @RequestBody UpdateJobModerationRequest request) {
+    return ApiResponse.<JobResponse>builder()
+        .code(ErrorCode.SUCCESS.getCode())
+        .message(ErrorCode.SUCCESS.getMessage())
+        .result(
+            jobService.updateJobModeration(
+                jobId, accountId, accountRole, accountPermissions, request))
         .build();
   }
 

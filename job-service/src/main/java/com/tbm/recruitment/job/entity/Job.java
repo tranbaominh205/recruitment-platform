@@ -69,6 +69,19 @@ public class Job {
   @Column(nullable = false, length = 30)
   private JobStatus status;
 
+  @Enumerated(EnumType.STRING)
+  @Column(name = "moderation_status", length = 30)
+  private JobModerationStatus moderationStatus;
+
+  @Column(name = "moderation_reason", length = 1000)
+  private String moderationReason;
+
+  @Column(name = "moderated_by_account_id")
+  private UUID moderatedByAccountId;
+
+  @Column(name = "moderated_at")
+  private Instant moderatedAt;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -83,6 +96,10 @@ public class Job {
 
     if (status == null) {
       status = JobStatus.DRAFT;
+    }
+
+    if (moderationStatus == null) {
+      moderationStatus = JobModerationStatus.ACTIVE;
     }
 
     Instant now = Instant.now();

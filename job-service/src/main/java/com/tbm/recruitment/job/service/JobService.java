@@ -2,12 +2,14 @@ package com.tbm.recruitment.job.service;
 
 import com.tbm.recruitment.job.client.EmployerClient;
 import com.tbm.recruitment.job.dto.request.CreateJobRequest;
+import com.tbm.recruitment.job.dto.request.UpdateJobModerationRequest;
 import com.tbm.recruitment.job.dto.request.UpdateJobRequest;
 import com.tbm.recruitment.job.dto.response.AdminJobStatisticsResponse;
 import com.tbm.recruitment.job.dto.response.CompanySummaryResponse;
 import com.tbm.recruitment.job.dto.response.JobResponse;
 import com.tbm.recruitment.job.dto.response.PageResponse;
 import com.tbm.recruitment.job.entity.Job;
+import com.tbm.recruitment.job.entity.JobModerationStatus;
 import com.tbm.recruitment.job.entity.JobStatus;
 import com.tbm.recruitment.job.exception.AppException;
 import com.tbm.recruitment.job.exception.ErrorCode;
@@ -16,6 +18,7 @@ import com.tbm.recruitment.job.repository.JobRepository;
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +55,7 @@ public class JobService {
     job.setCompanyId(company.id());
     job.setCreatedByAccountId(accountId);
     job.setStatus(JobStatus.DRAFT);
+    job.setModerationStatus(JobModerationStatus.ACTIVE);
 
     Job savedJob = jobRepository.save(job);
 
@@ -119,9 +123,10 @@ public class JobService {
   public JobResponse getPublishedJob(UUID jobId) {
 
     Job job =
-        jobRepository
-            .findByIdAndStatus(jobId, JobStatus.PUBLISHED)
-            .orElseThrow(() -> new AppException(ErrorCode.JOB_NOT_FOUND));
+        jobRepository.findById(jobId).orElseThrow(() -> new AppException(ErrorCode.JOB_NOT_FOUND));
+    if (!isPubliclyVisible(job)) {
+      throw new AppException(ErrorCode.JOB_NOT_FOUND);
+    }
 
     return jobMapper.toJobResponse(job);
   }
@@ -168,6 +173,10 @@ public class JobService {
           List<Predicate> predicates = new ArrayList<>();
 
           predicates.add(criteriaBuilder.equal(root.get("status"), JobStatus.PUBLISHED));
+          predicates.add(
+              criteriaBuilder.or(
+                  criteriaBuilder.equal(root.get("moderationStatus"), JobModerationStatus.ACTIVE),
+                  criteriaBuilder.isNull(root.get("moderationStatus"))));
 
           if (StringUtils.hasText(keyword)) {
             predicates.add(
@@ -203,8 +212,17 @@ public class JobService {
     PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
     Page<Job> jobPage = jobRepository.findAll(specification, pageRequest);
-
-    return toPageResponse(jobPage);
+    List<JobResponse> content =
+        jobPage.getContent().stream()
+            .filter(this::isPubliclyVisible)
+            .map(jobMapper::toJobResponse)
+            .toList();
+    return new PageResponse<>(
+        content,
+        jobPage.getNumber(),
+        jobPage.getSize(),
+        jobPage.getTotalElements(),
+        jobPage.getTotalPages());
   }
 
   @Transactional(readOnly = true)
@@ -213,6 +231,7 @@ public class JobService {
       String accountRole,
       String keyword,
       String status,
+      String moderationStatus,
       int page,
       int size) {
 
@@ -220,6 +239,7 @@ public class JobService {
     validatePagination(page, size);
 
     JobStatus statusFilter = parseJobStatus(status);
+    JobModerationStatus moderationStatusFilter = parseModerationStatus(moderationStatus);
 
     Specification<Job> specification =
         (root, query, criteriaBuilder) -> {
@@ -236,11 +256,35 @@ public class JobService {
             predicates.add(criteriaBuilder.equal(root.get("status"), statusFilter));
           }
 
+          if (moderationStatusFilter != null) {
+            if (moderationStatusFilter == JobModerationStatus.ACTIVE) {
+              predicates.add(
+                  criteriaBuilder.or(
+                      criteriaBuilder.equal(
+                          root.get("moderationStatus"), JobModerationStatus.ACTIVE),
+                      criteriaBuilder.isNull(root.get("moderationStatus"))));
+            } else {
+              predicates.add(
+                  criteriaBuilder.equal(root.get("moderationStatus"), moderationStatusFilter));
+            }
+          }
+
           return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
         };
 
     PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-    return toPageResponse(jobRepository.findAll(specification, pageRequest));
+    Page<Job> jobPage = jobRepository.findAll(specification, pageRequest);
+    List<JobResponse> content =
+        jobPage.getContent().stream()
+            .filter(job -> matchModerationFilter(job, moderationStatusFilter))
+            .map(jobMapper::toJobResponse)
+            .toList();
+    return new PageResponse<>(
+        content,
+        jobPage.getNumber(),
+        jobPage.getSize(),
+        jobPage.getTotalElements(),
+        jobPage.getTotalPages());
   }
 
   @Transactional(readOnly = true)
@@ -262,6 +306,38 @@ public class JobService {
     long closed = jobRepository.countByStatus(JobStatus.CLOSED);
 
     return new AdminJobStatisticsResponse(total, draft, published, closed);
+  }
+
+  @Transactional
+  public JobResponse updateJobModeration(
+      UUID jobId,
+      String accountIdHeader,
+      String accountRole,
+      String accountPermissions,
+      UpdateJobModerationRequest request) {
+    UUID moderatorId =
+        requireAdminAccountWithPermission(
+            accountIdHeader, accountRole, accountPermissions, "JOB_MODERATE");
+
+    Job job =
+        jobRepository.findById(jobId).orElseThrow(() -> new AppException(ErrorCode.JOB_NOT_FOUND));
+
+    JobModerationStatus nextModerationStatus = request.moderationStatus();
+    if (nextModerationStatus == JobModerationStatus.ACTIVE) {
+      job.setModerationStatus(JobModerationStatus.ACTIVE);
+      job.setModerationReason(null);
+      job.setModeratedByAccountId(null);
+      job.setModeratedAt(null);
+    } else {
+      String reason = requireModerationReason(request.reason());
+      job.setModerationStatus(nextModerationStatus);
+      job.setModerationReason(reason);
+      job.setModeratedByAccountId(moderatorId);
+      job.setModeratedAt(java.time.Instant.now());
+    }
+
+    Job savedJob = jobRepository.save(job);
+    return jobMapper.toJobResponse(savedJob);
   }
 
   private Job getOwnedJob(UUID jobId, String accountIdHeader, String accountRole) {
@@ -307,6 +383,27 @@ public class JobService {
     }
   }
 
+  private UUID requireAdminAccountWithPermission(
+      String accountIdHeader,
+      String accountRole,
+      String accountPermissions,
+      String requiredPermission) {
+    UUID accountId = requireAdminAccount(accountIdHeader, accountRole);
+    if (accountPermissions == null || accountPermissions.isBlank()) {
+      throw new AppException(ErrorCode.FORBIDDEN);
+    }
+
+    Set<String> permissions =
+        java.util.Arrays.stream(accountPermissions.split(","))
+            .map(String::trim)
+            .filter(value -> !value.isBlank())
+            .collect(java.util.stream.Collectors.toSet());
+    if (!permissions.contains(requiredPermission)) {
+      throw new AppException(ErrorCode.FORBIDDEN);
+    }
+    return accountId;
+  }
+
   private JobStatus parseJobStatus(String status) {
     if (!StringUtils.hasText(status)) {
       return null;
@@ -317,6 +414,42 @@ public class JobService {
     } catch (IllegalArgumentException exception) {
       throw new AppException(ErrorCode.INVALID_REQUEST);
     }
+  }
+
+  private JobModerationStatus parseModerationStatus(String moderationStatus) {
+    if (!StringUtils.hasText(moderationStatus)) {
+      return null;
+    }
+
+    try {
+      return JobModerationStatus.valueOf(moderationStatus.trim().toUpperCase());
+    } catch (IllegalArgumentException exception) {
+      throw new AppException(ErrorCode.INVALID_REQUEST);
+    }
+  }
+
+  private String requireModerationReason(String reason) {
+    if (!StringUtils.hasText(reason)) {
+      throw new AppException(ErrorCode.INVALID_REQUEST);
+    }
+    return reason.trim();
+  }
+
+  private boolean isPubliclyVisible(Job job) {
+    return job.getStatus() == JobStatus.PUBLISHED
+        && (job.getModerationStatus() == null
+            || job.getModerationStatus() == JobModerationStatus.ACTIVE);
+  }
+
+  private boolean matchModerationFilter(Job job, JobModerationStatus moderationStatusFilter) {
+    if (moderationStatusFilter == null) {
+      return true;
+    }
+    if (moderationStatusFilter == JobModerationStatus.ACTIVE) {
+      return job.getModerationStatus() == null
+          || job.getModerationStatus() == JobModerationStatus.ACTIVE;
+    }
+    return job.getModerationStatus() == moderationStatusFilter;
   }
 
   private void validateSalaryRange(java.math.BigDecimal salaryMin, java.math.BigDecimal salaryMax) {
