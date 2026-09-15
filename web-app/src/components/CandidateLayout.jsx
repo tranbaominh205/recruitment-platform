@@ -21,6 +21,7 @@ function CandidateLayout() {
         <NavLink to="/candidate/profile">Profile</NavLink>
         <NavLink to="/candidate/resumes">Resumes</NavLink>
         <NavLink to="/candidate/jobs">Jobs</NavLink>
+        <NavLink to="/candidate/recommendations">Recommended</NavLink>
         <NavLink to="/candidate/applications">My applications</NavLink>
         <NavLink to="/candidate/notifications">Notifications</NavLink>
       </nav>

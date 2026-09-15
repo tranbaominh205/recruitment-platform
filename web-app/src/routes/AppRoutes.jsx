@@ -13,6 +13,7 @@ import CandidateHomePage from '../pages/CandidateHomePage'
 import CandidateJobDetailPage from '../pages/CandidateJobDetailPage'
 import CandidateJobsPage from '../pages/CandidateJobsPage'
 import CandidateProfilePage from '../pages/CandidateProfilePage'
+import CandidateRecommendationsPage from '../pages/CandidateRecommendationsPage'
 import CandidateResumesPage from '../pages/CandidateResumesPage'
 import AdminDashboardPage from '../pages/AdminDashboardPage'
 import AdminInterviewDetailPage from '../pages/AdminInterviewDetailPage'
@@ -54,6 +55,7 @@ function AppRoutes() {
               <Route path="profile" element={<CandidateProfilePage />} />
               <Route path="resumes" element={<CandidateResumesPage />} />
               <Route path="jobs" element={<CandidateJobsPage />} />
+              <Route path="recommendations" element={<CandidateRecommendationsPage />} />
               <Route path="jobs/:jobId" element={<CandidateJobDetailPage />} />
               <Route path="applications" element={<CandidateApplicationsPage />} />
               <Route path="applications/:applicationId" element={<CandidateApplicationDetailPage />} />
