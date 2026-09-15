@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '../configurations/AuthContext'
+import AdminLayout from '../components/AdminLayout'
 import CandidateApplicationDetailPage from '../pages/CandidateApplicationDetailPage'
 import CandidateApplicationsPage from '../pages/CandidateApplicationsPage'
 import CandidateHomePage from '../pages/CandidateHomePage'
@@ -7,6 +8,7 @@ import CandidateJobDetailPage from '../pages/CandidateJobDetailPage'
 import CandidateJobsPage from '../pages/CandidateJobsPage'
 import CandidateProfilePage from '../pages/CandidateProfilePage'
 import CandidateResumesPage from '../pages/CandidateResumesPage'
+import AdminDashboardPage from '../pages/AdminDashboardPage'
 import NotificationsPage from '../pages/NotificationsPage'
 import CandidateLayout from '../components/CandidateLayout'
 import RecruiterLayout from '../components/RecruiterLayout'
@@ -53,6 +55,11 @@ function AppRoutes() {
               <Route path="jobs/:jobId/applications" element={<RecruiterApplicationsPage />} />
               <Route path="applications/:applicationId" element={<RecruiterApplicationDetailPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
+            </Route>
+          </Route>
+          <Route element={<ProtectedRoute allowedRole="ADMIN" />}>
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboardPage />} />
             </Route>
           </Route>
         </Routes>

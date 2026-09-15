@@ -26,3 +26,4 @@ export function getApplicationsForJob(jobId, params) { return apiClient.get(`/re
 export function updateApplicationStatus(applicationId, status) { return apiClient.patch(`/recruitment/application/${applicationId}/status`, { status }).then(getResult) }
 export function scheduleInterview(applicationId, payload) { return apiClient.post(`/recruitment/application/${applicationId}/interview`, payload).then(getResult) }
 export function downloadSubmittedResume(applicationId) { return apiClient.get(`/recruitment/application/${applicationId}/resume/download`, { responseType: 'blob' }) }
+export function getAdminRecruitmentStatistics() { return apiClient.get('/recruitment/admin/statistics').then(getResult) }

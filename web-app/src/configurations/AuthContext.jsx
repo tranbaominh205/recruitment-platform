@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ACCESS_TOKEN_KEY } from './apiClient'
-import { getCurrentAccount, loginAccount } from '../services/identityService'
+import { getCurrentAccount, loginAccount, logoutAccount } from '../services/identityService'
 import { AuthContext } from './authContextValue'
 
 export function AuthProvider({ children }) {
@@ -64,9 +64,13 @@ export function AuthProvider({ children }) {
     }
   }
 
-  function logout() {
-    localStorage.removeItem(ACCESS_TOKEN_KEY)
-    setAccount(null)
+  async function logout() {
+    try {
+      await logoutAccount()
+    } finally {
+      localStorage.removeItem(ACCESS_TOKEN_KEY)
+      setAccount(null)
+    }
   }
 
   const value = {

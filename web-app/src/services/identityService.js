@@ -10,6 +10,14 @@ export function loginAccount(payload) {
   return apiClient.post('/identity/auth/login', payload).then(getResult)
 }
 
+export function logoutAccount() {
+  return apiClient.post('/identity/auth/logout').then(getResult)
+}
+
 export function getCurrentAccount() {
   return apiClient.get('/identity/me').then(getResult)
+}
+
+export function getAdminAccountStatistics() {
+  return apiClient.get('/identity/admin/statistics').then(getResult)
 }
