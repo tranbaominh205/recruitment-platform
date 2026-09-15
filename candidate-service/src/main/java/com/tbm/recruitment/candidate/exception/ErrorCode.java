@@ -17,6 +17,8 @@ public enum ErrorCode {
 
   FORBIDDEN(2005, "Forbidden", HttpStatus.FORBIDDEN),
 
+  JOB_SERVICE_UNAVAILABLE(2006, "Job service unavailable", HttpStatus.SERVICE_UNAVAILABLE),
+
   INTERNAL_SERVER_ERROR(2999, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
 
   private final int code;
