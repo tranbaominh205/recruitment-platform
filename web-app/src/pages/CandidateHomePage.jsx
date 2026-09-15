@@ -10,6 +10,7 @@ function CandidateHomePage() {
         <Link className="overview-link" to="/candidate/profile"><strong>Profile and preferences</strong><span>Maintain your own candidate details.</span></Link>
         <Link className="overview-link" to="/candidate/resumes"><strong>Resume library</strong><span>Upload and review your PDF resumes.</span></Link>
         <Link className="overview-link" to="/candidate/jobs"><strong>Browse jobs</strong><span>Search published opportunities.</span></Link>
+        <Link className="overview-link" to="/candidate/recommendations"><strong>Recommended jobs</strong><span>Jobs ranked from your profile preferences.</span></Link>
         <Link className="overview-link" to="/candidate/applications"><strong>My applications</strong><span>Track statuses and interview details.</span></Link>
       </div>
     </main>

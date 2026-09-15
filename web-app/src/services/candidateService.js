@@ -17,3 +17,7 @@ export function updateMyProfile(payload) {
 export function updateMyPreferences(payload) {
   return apiClient.put('/candidate/profile/preferences', payload).then(getResult)
 }
+
+export function getMyJobRecommendations(params) {
+  return apiClient.get('/candidate/recommendations', { params }).then(getResult)
+}
