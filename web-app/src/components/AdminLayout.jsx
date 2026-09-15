@@ -18,6 +18,9 @@ function AdminLayout() {
       </header>
       <nav className="shell-nav" aria-label="Admin navigation">
         <NavLink to="/admin" end>Overview</NavLink>
+        <NavLink to="/admin/accounts">Accounts</NavLink>
+        <NavLink to="/admin/companies">Companies</NavLink>
+        <NavLink to="/admin/jobs">Jobs</NavLink>
       </nav>
       <Outlet />
     </div>
