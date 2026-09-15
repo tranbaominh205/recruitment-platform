@@ -10,7 +10,13 @@ public interface NotificationRepository extends MongoRepository<Notification, UU
 
   List<Notification> findAllByRecipientAccountIdOrderByCreatedAtDesc(UUID recipientAccountId);
 
+  List<Notification> findAllByRecipientAccountIdAndReadFalse(UUID recipientAccountId);
+
+  long countByRecipientAccountIdAndRead(UUID recipientAccountId, boolean read);
+
   boolean existsBySourceEventId(UUID sourceEventId);
+
+  java.util.Optional<Notification> findByIdAndRecipientAccountId(UUID id, UUID recipientAccountId);
 
   long countByRead(boolean read);
 

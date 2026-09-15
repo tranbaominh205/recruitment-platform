@@ -1,6 +1,7 @@
 package com.tbm.recruitment.notification.service;
 
 import com.tbm.recruitment.notification.dto.response.NotificationResponse;
+import com.tbm.recruitment.notification.dto.response.UnreadNotificationCountResponse;
 import com.tbm.recruitment.notification.entity.Notification;
 import com.tbm.recruitment.notification.enums.NotificationType;
 import com.tbm.recruitment.notification.exception.AppException;
@@ -34,6 +35,38 @@ public class NotificationService {
         .toList();
   }
 
+  public UnreadNotificationCountResponse getUnreadNotificationCount(
+      String accountIdHeader, String accountRole) {
+    UUID recipientAccountId = requireNotificationRecipient(accountIdHeader, accountRole);
+    long unreadCount =
+        notificationRepository.countByRecipientAccountIdAndRead(recipientAccountId, false);
+    return new UnreadNotificationCountResponse(unreadCount);
+  }
+
+  public NotificationResponse markNotificationAsRead(
+      UUID notificationId, String accountIdHeader, String accountRole) {
+    return updateNotificationReadState(notificationId, accountIdHeader, accountRole, true);
+  }
+
+  public NotificationResponse markNotificationAsUnread(
+      UUID notificationId, String accountIdHeader, String accountRole) {
+    return updateNotificationReadState(notificationId, accountIdHeader, accountRole, false);
+  }
+
+  public UnreadNotificationCountResponse markAllNotificationsAsRead(
+      String accountIdHeader, String accountRole) {
+    UUID recipientAccountId = requireNotificationRecipient(accountIdHeader, accountRole);
+    List<Notification> unreadNotifications =
+        notificationRepository.findAllByRecipientAccountIdAndReadFalse(recipientAccountId);
+
+    unreadNotifications.forEach(notification -> notification.setRead(true));
+    if (!unreadNotifications.isEmpty()) {
+      notificationRepository.saveAll(unreadNotifications);
+    }
+
+    return new UnreadNotificationCountResponse(0L);
+  }
+
   public NotificationResponse createNotification(
       UUID sourceEventId,
       UUID recipientAccountId,
@@ -62,6 +95,23 @@ public class NotificationService {
     Notification savedNotification = notificationRepository.save(notification);
 
     return notificationMapper.toNotificationResponse(savedNotification);
+  }
+
+  private NotificationResponse updateNotificationReadState(
+      UUID notificationId, String accountIdHeader, String accountRole, boolean readState) {
+    UUID recipientAccountId = requireNotificationRecipient(accountIdHeader, accountRole);
+
+    Notification notification =
+        notificationRepository
+            .findByIdAndRecipientAccountId(notificationId, recipientAccountId)
+            .orElseThrow(() -> new AppException(ErrorCode.NOTIFICATION_NOT_FOUND));
+
+    if (notification.isRead() != readState) {
+      notification.setRead(readState);
+      notification = notificationRepository.save(notification);
+    }
+
+    return notificationMapper.toNotificationResponse(notification);
   }
 
   private UUID requireNotificationRecipient(String accountIdHeader, String accountRole) {
