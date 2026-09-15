@@ -7,6 +7,8 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
   SUCCESS(1000, "Success", HttpStatus.OK),
 
+  INVALID_REQUEST(8000, "Invalid request", HttpStatus.BAD_REQUEST),
+
   UNAUTHENTICATED(8001, "Unauthenticated", HttpStatus.UNAUTHORIZED),
 
   FORBIDDEN(8002, "Forbidden", HttpStatus.FORBIDDEN),
@@ -15,6 +17,8 @@ public enum ErrorCode {
 
   CANDIDATE_SERVICE_UNAVAILABLE(
       8004, "Candidate service unavailable", HttpStatus.SERVICE_UNAVAILABLE),
+
+  NOTIFICATION_NOT_FOUND(8005, "Notification not found", HttpStatus.NOT_FOUND),
 
   INTERNAL_SERVER_ERROR(8999, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
 

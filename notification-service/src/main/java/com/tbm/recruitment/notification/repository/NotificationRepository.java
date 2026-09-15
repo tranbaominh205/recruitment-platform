@@ -1,6 +1,7 @@
 package com.tbm.recruitment.notification.repository;
 
 import com.tbm.recruitment.notification.entity.Notification;
+import com.tbm.recruitment.notification.enums.NotificationType;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -10,4 +11,8 @@ public interface NotificationRepository extends MongoRepository<Notification, UU
   List<Notification> findAllByRecipientAccountIdOrderByCreatedAtDesc(UUID recipientAccountId);
 
   boolean existsBySourceEventId(UUID sourceEventId);
+
+  long countByRead(boolean read);
+
+  long countByType(NotificationType type);
 }

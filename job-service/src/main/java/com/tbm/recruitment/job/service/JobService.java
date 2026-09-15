@@ -3,6 +3,7 @@ package com.tbm.recruitment.job.service;
 import com.tbm.recruitment.job.client.EmployerClient;
 import com.tbm.recruitment.job.dto.request.CreateJobRequest;
 import com.tbm.recruitment.job.dto.request.UpdateJobRequest;
+import com.tbm.recruitment.job.dto.response.AdminJobStatisticsResponse;
 import com.tbm.recruitment.job.dto.response.CompanySummaryResponse;
 import com.tbm.recruitment.job.dto.response.JobResponse;
 import com.tbm.recruitment.job.dto.response.PageResponse;
@@ -206,6 +207,63 @@ public class JobService {
     return toPageResponse(jobPage);
   }
 
+  @Transactional(readOnly = true)
+  public PageResponse<JobResponse> getAdminJobs(
+      String accountIdHeader,
+      String accountRole,
+      String keyword,
+      String status,
+      int page,
+      int size) {
+
+    requireAdminAccount(accountIdHeader, accountRole);
+    validatePagination(page, size);
+
+    JobStatus statusFilter = parseJobStatus(status);
+
+    Specification<Job> specification =
+        (root, query, criteriaBuilder) -> {
+          List<Predicate> predicates = new ArrayList<>();
+
+          if (StringUtils.hasText(keyword)) {
+            predicates.add(
+                criteriaBuilder.like(
+                    criteriaBuilder.lower(root.get("title")),
+                    "%" + keyword.trim().toLowerCase() + "%"));
+          }
+
+          if (statusFilter != null) {
+            predicates.add(criteriaBuilder.equal(root.get("status"), statusFilter));
+          }
+
+          return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
+
+    PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+    return toPageResponse(jobRepository.findAll(specification, pageRequest));
+  }
+
+  @Transactional(readOnly = true)
+  public JobResponse getAdminJobById(UUID jobId, String accountIdHeader, String accountRole) {
+    requireAdminAccount(accountIdHeader, accountRole);
+
+    Job job =
+        jobRepository.findById(jobId).orElseThrow(() -> new AppException(ErrorCode.JOB_NOT_FOUND));
+    return jobMapper.toJobResponse(job);
+  }
+
+  @Transactional(readOnly = true)
+  public AdminJobStatisticsResponse getAdminStatistics(String accountIdHeader, String accountRole) {
+    requireAdminAccount(accountIdHeader, accountRole);
+
+    long total = jobRepository.count();
+    long draft = jobRepository.countByStatus(JobStatus.DRAFT);
+    long published = jobRepository.countByStatus(JobStatus.PUBLISHED);
+    long closed = jobRepository.countByStatus(JobStatus.CLOSED);
+
+    return new AdminJobStatisticsResponse(total, draft, published, closed);
+  }
+
   private Job getOwnedJob(UUID jobId, String accountIdHeader, String accountRole) {
 
     CompanySummaryResponse company = employerClient.getMyCompany(accountIdHeader, accountRole);
@@ -229,6 +287,35 @@ public class JobService {
       return UUID.fromString(accountIdHeader);
     } catch (IllegalArgumentException exception) {
       throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+  }
+
+  private UUID requireAdminAccount(String accountIdHeader, String accountRole) {
+
+    if (accountIdHeader == null || accountIdHeader.isBlank()) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
+    if (!"ADMIN".equals(accountRole)) {
+      throw new AppException(ErrorCode.FORBIDDEN);
+    }
+
+    try {
+      return UUID.fromString(accountIdHeader);
+    } catch (IllegalArgumentException exception) {
+      throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+  }
+
+  private JobStatus parseJobStatus(String status) {
+    if (!StringUtils.hasText(status)) {
+      return null;
+    }
+
+    try {
+      return JobStatus.valueOf(status.trim().toUpperCase());
+    } catch (IllegalArgumentException exception) {
+      throw new AppException(ErrorCode.INVALID_REQUEST);
     }
   }
 

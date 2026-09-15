@@ -10,31 +10,44 @@ Recruitment Platform Capstone
 
 Current phase:
 
-POST-P0 HARDENING — IDENTITY PHASE A FINAL COMPLETE
+POST-P0 PHASE B — ADMIN BACKEND COMPLETE
 
-Identity POST-P0 Phase A final hardening is now implemented on top of the
-existing JTI/revocation + authoritative introspection + refresh rotation/replay
-protection baseline.
+POST-P0 Phase B Admin backend is now implemented across Identity, Employer,
+Job, Recruitment, Resume, Matching, and Notification services while preserving
+existing P0 candidate/recruiter/public behavior.
 
-Current Identity state includes:
+Current state includes:
 
-- `Account.tokenVersion` persisted (`token_version`, default `0`) and emitted in
-  every new access JWT as claim `tokenVersion`;
-- introspection rejects missing/non-numeric/mismatched tokenVersion after
-  authoritative enabled-account load;
-- refresh rejects tokenVersion mismatch before revocation/new issuance while
-  preserving `saveAndFlush` replay protection;
-- `/identity/me` is authoritative from DB (`accountId/email/role`) and enforces
-  enabled-account + tokenVersion match;
-- protected password change endpoint
-  `PUT /identity/me/password` (`currentPassword`, `newPassword`) verifies
-  current password, updates hash, increments tokenVersion exactly once, and does
-  not issue new tokens;
-- environment-driven, idempotent initial ADMIN bootstrap via
-  `ADMIN_BOOTSTRAP_ENABLED/EMAIL/PASSWORD` with startup conflict fail-fast for
-  existing non-ADMIN email;
-- method security enabled with service-level
-  `@PreAuthorize("hasRole('ADMIN')")` defense-in-depth on admin account listing.
+- Identity Admin:
+    - paginated/filterable `GET /identity/admin/accounts`;
+    - `GET /identity/admin/accounts/{accountId}`;
+    - `PATCH /identity/admin/accounts/{accountId}/enabled`;
+    - `GET /identity/admin/statistics`;
+    - enabled-state change increments `Account.tokenVersion` exactly once; same
+      state is no-op; current ADMIN cannot disable itself;
+    - method security remains with `@PreAuthorize("hasRole('ADMIN')")` defense-in-depth.
+- Employer Admin:
+    - read-only company list/detail/statistics.
+- Job Admin:
+    - read-only job list/detail/statistics including `DRAFT/PUBLISHED/CLOSED`;
+    - existing public published-job behavior unchanged.
+- Recruitment Admin:
+    - read-only application/interview list/detail/statistics;
+    - no Admin status mutation.
+- Resume Admin:
+    - metadata-only resume list/detail/statistics;
+    - no unrestricted Admin binary download.
+- Matching Admin:
+    - read-only stored-result list/detail/statistics;
+    - no Admin-triggered parsing/Gemini/new matching.
+- Notification Admin:
+    - read-only notification list/detail/statistics;
+    - no arbitrary Admin notification creation.
+- For business-service Admin APIs:
+    - require valid UUID `X-Account-Id`;
+    - require `X-Account-Role=ADMIN`;
+    - non-ADMIN follows existing `FORBIDDEN` behavior;
+    - list APIs use 0-based pagination, default size `20`, max size `100`.
 
 All historical Day 1-6 architecture/domain constraints remain unchanged,
 including frozen recruitment statuses, selected `resumeId` immutability, and

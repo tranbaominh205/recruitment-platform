@@ -7,14 +7,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.tbm.recruitment.identity.dto.request.ChangePasswordRequest;
 import com.tbm.recruitment.identity.dto.request.IntrospectRequest;
 import com.tbm.recruitment.identity.dto.request.RefreshRequest;
+import com.tbm.recruitment.identity.dto.response.AccountResponse;
+import com.tbm.recruitment.identity.dto.response.AdminAccountStatisticsResponse;
 import com.tbm.recruitment.identity.dto.response.IntrospectResponse;
 import com.tbm.recruitment.identity.dto.response.MeResponse;
+import com.tbm.recruitment.identity.dto.response.PageResponse;
 import com.tbm.recruitment.identity.entity.Account;
 import com.tbm.recruitment.identity.entity.Role;
 import com.tbm.recruitment.identity.exception.AppException;
@@ -31,6 +35,8 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -54,6 +60,7 @@ class AccountServiceTest {
   private PasswordEncoder passwordEncoder;
   private JwtService jwtService;
   private JwtEncoder jwtEncoder;
+  private AccountMapper accountMapper;
 
   @BeforeEach
   void setUp() {
@@ -76,9 +83,9 @@ class AccountServiceTest {
     accountRepository = mock(AccountRepository.class);
     invalidatedTokenRepository = mock(InvalidatedTokenRepository.class);
     passwordEncoder = new BCryptPasswordEncoder();
+    accountMapper = mock(AccountMapper.class);
 
-    accountService =
-        new AccountService(accountRepository, mock(AccountMapper.class), passwordEncoder);
+    accountService = new AccountService(accountRepository, accountMapper, passwordEncoder);
     authenticationService =
         new AuthenticationService(
             accountRepository,
@@ -180,6 +187,116 @@ class AccountServiceTest {
     assertEquals(ErrorCode.INVALID_CURRENT_PASSWORD, exception.getErrorCode());
     assertEquals(0L, account.getTokenVersion());
     verify(accountRepository, never()).save(any(Account.class));
+  }
+
+  @Test
+  void getAccountsReturnsPagedFilteredResponseForAdmin() {
+    UUID accountId = UUID.randomUUID();
+    Account account = buildAccount(accountId, "filter@example.com", Role.CANDIDATE, 0L);
+    AccountResponse mapped =
+        new AccountResponse(
+            accountId, "filter@example.com", Role.CANDIDATE, true, account.getCreatedAt());
+    when(accountRepository.findAll(
+            any(org.springframework.data.jpa.domain.Specification.class), any(PageRequest.class)))
+        .thenReturn(new PageImpl<>(java.util.List.of(account), PageRequest.of(0, 20), 1));
+    when(accountMapper.toAccountResponse(account)).thenReturn(mapped);
+
+    PageResponse<AccountResponse> response =
+        accountService.getAccounts("filter", "CANDIDATE", true, 0, 20);
+
+    assertEquals(1, response.content().size());
+    assertEquals(accountId, response.content().getFirst().id());
+    assertEquals(0, response.page());
+    assertEquals(20, response.size());
+    assertEquals(1L, response.totalElements());
+  }
+
+  @Test
+  void updateAccountEnabledNoOpWhenSameStateDoesNotIncrementTokenVersion() {
+    UUID accountId = UUID.randomUUID();
+    Account account = buildAccount(accountId, "enabled@example.com", Role.CANDIDATE, 2L);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+    when(accountMapper.toAccountResponse(account))
+        .thenReturn(
+            new AccountResponse(
+                accountId, account.getEmail(), account.getRole(), true, account.getCreatedAt()));
+
+    Jwt adminJwt =
+        Jwt.withTokenValue("token")
+            .subject(UUID.randomUUID().toString())
+            .header("alg", "none")
+            .build();
+
+    accountService.updateAccountEnabled(accountId, true, adminJwt);
+
+    assertEquals(2L, account.getTokenVersion());
+    verify(accountRepository, never()).save(any(Account.class));
+  }
+
+  @Test
+  void updateAccountEnabledRealChangeIncrementsTokenVersionExactlyOnce() {
+    UUID accountId = UUID.randomUUID();
+    Account account = buildAccount(accountId, "enabled@example.com", Role.CANDIDATE, 5L);
+    account.setEnabled(true);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+    when(accountRepository.save(any(Account.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(accountMapper.toAccountResponse(any(Account.class)))
+        .thenAnswer(
+            invocation -> {
+              Account mapped = invocation.getArgument(0);
+              return new AccountResponse(
+                  mapped.getId(),
+                  mapped.getEmail(),
+                  mapped.getRole(),
+                  mapped.isEnabled(),
+                  mapped.getCreatedAt());
+            });
+
+    Jwt adminJwt =
+        Jwt.withTokenValue("token")
+            .subject(UUID.randomUUID().toString())
+            .header("alg", "none")
+            .build();
+
+    AccountResponse response = accountService.updateAccountEnabled(accountId, false, adminJwt);
+
+    assertFalse(response.enabled());
+    assertEquals(6L, account.getTokenVersion());
+    verify(accountRepository, times(1)).save(any(Account.class));
+  }
+
+  @Test
+  void updateAccountEnabledCannotDisableCurrentAdmin() {
+    UUID adminId = UUID.randomUUID();
+    Jwt adminJwt =
+        Jwt.withTokenValue("token").subject(adminId.toString()).header("alg", "none").build();
+
+    AppException exception =
+        assertThrows(
+            AppException.class,
+            () -> accountService.updateAccountEnabled(adminId, false, adminJwt));
+
+    assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+    verify(accountRepository, never()).findById(any());
+  }
+
+  @Test
+  void getAdminStatisticsCountsByRoleAndEnabled() {
+    when(accountRepository.count()).thenReturn(10L);
+    when(accountRepository.countByRole(Role.CANDIDATE)).thenReturn(4L);
+    when(accountRepository.countByRole(Role.RECRUITER)).thenReturn(3L);
+    when(accountRepository.countByRole(Role.ADMIN)).thenReturn(3L);
+    when(accountRepository.countByEnabled(true)).thenReturn(7L);
+
+    AdminAccountStatisticsResponse response = accountService.getAdminStatistics();
+
+    assertEquals(10L, response.totalAccounts());
+    assertEquals(4L, response.candidateAccounts());
+    assertEquals(3L, response.recruiterAccounts());
+    assertEquals(3L, response.adminAccounts());
+    assertEquals(7L, response.enabledAccounts());
+    assertEquals(3L, response.disabledAccounts());
   }
 
   private Account buildAccount(UUID accountId, String email, Role role, long tokenVersion) {

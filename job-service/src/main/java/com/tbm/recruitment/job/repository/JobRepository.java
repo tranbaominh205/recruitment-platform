@@ -16,4 +16,6 @@ public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificatio
   Optional<Job> findByIdAndStatus(UUID id, JobStatus status);
 
   Page<Job> findAllByCompanyId(UUID companyId, Pageable pageable);
+
+  long countByStatus(JobStatus status);
 }
