@@ -19,3 +19,6 @@ export function closeJob(jobId) { return apiClient.post(`/job/${jobId}/close`).t
 export function getAdminJobStatistics() { return apiClient.get('/job/admin/statistics').then(getResult) }
 export function getAdminJobs(params) { return apiClient.get('/job/admin/jobs', { params }).then(getResult) }
 export function getAdminJob(jobId) { return apiClient.get(`/job/admin/jobs/${jobId}`).then(getResult) }
+export function updateAdminJobModeration(jobId, payload) {
+  return apiClient.patch(`/job/admin/jobs/${jobId}/moderation`, payload).then(getResult)
+}

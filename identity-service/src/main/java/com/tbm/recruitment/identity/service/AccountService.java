@@ -163,7 +163,11 @@ public class AccountService {
   @Transactional(readOnly = true)
   public MeResponse getCurrentAccount(Jwt jwt) {
     Account account = loadAuthoritativeEnabledAccount(jwt);
-    return new MeResponse(account.getId().toString(), account.getEmail(), account.getRole().name());
+    return new MeResponse(
+        account.getId().toString(),
+        account.getEmail(),
+        account.getRole().name(),
+        getPermissionsForRole(account));
   }
 
   @Transactional
@@ -177,6 +181,18 @@ public class AccountService {
     account.setPasswordHash(passwordEncoder.encode(request.newPassword()));
     account.setTokenVersion(account.getTokenVersion() + 1);
     accountRepository.save(account);
+  }
+
+  private List<String> getPermissionsForRole(Account account) {
+    if (account.getRole() != Role.ADMIN) {
+      return List.of();
+    }
+
+    if (account.getAdminPermissions() == null || account.getAdminPermissions().isEmpty()) {
+      return List.of();
+    }
+
+    return account.getAdminPermissions().stream().map(AdminPermission::name).sorted().toList();
   }
 
   private Account loadAuthoritativeEnabledAccount(Jwt jwt) {

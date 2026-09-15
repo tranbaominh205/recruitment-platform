@@ -12,7 +12,7 @@ const defaultPage = {
 }
 
 function AdminCompaniesPage() {
-  const [filters, setFilters] = useState({ keyword: '' })
+  const [filters, setFilters] = useState({ keyword: '', moderationStatus: '', verificationStatus: '' })
   const [resultPage, setResultPage] = useState(defaultPage)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -28,6 +28,14 @@ function AdminCompaniesPage() {
 
       if (nextFilters.keyword.trim()) {
         params.keyword = nextFilters.keyword.trim()
+      }
+
+      if (nextFilters.moderationStatus) {
+        params.moderationStatus = nextFilters.moderationStatus
+      }
+
+      if (nextFilters.verificationStatus) {
+        params.verificationStatus = nextFilters.verificationStatus
       }
 
       const response = await getAdminCompanies(params)
@@ -75,6 +83,23 @@ function AdminCompaniesPage() {
             placeholder="Company name"
           />
         </label>
+        <label>
+          Moderation status
+          <select name="moderationStatus" value={filters.moderationStatus} onChange={updateFilter}>
+            <option value="">All moderation</option>
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="SUSPENDED">SUSPENDED</option>
+          </select>
+        </label>
+        <label>
+          Verification status
+          <select name="verificationStatus" value={filters.verificationStatus} onChange={updateFilter}>
+            <option value="">All verification</option>
+            <option value="UNVERIFIED">UNVERIFIED</option>
+            <option value="VERIFIED">VERIFIED</option>
+            <option value="REJECTED">REJECTED</option>
+          </select>
+        </label>
         <button type="submit">Search companies</button>
       </form>
 
@@ -90,6 +115,8 @@ function AdminCompaniesPage() {
                 <p className="eyebrow">{company.industry || 'Industry not set'}</p>
                 <h2>{company.name}</h2>
                 <p>{company.location || 'Location not set'}</p>
+                <p>Moderation: {company.moderationStatus || 'ACTIVE'}</p>
+                <p>Verification: {company.verificationStatus || 'UNVERIFIED'}</p>
                 <p>{company.id}</p>
               </div>
               <Link className="button-link" to={`/admin/companies/${company.id}`}>View detail</Link>
