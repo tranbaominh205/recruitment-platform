@@ -312,6 +312,13 @@ must not be trusted if sent by a client. Gateway MUST overwrite externally
 supplied values of trusted headers, strip spoofed values, and only forward the
 server-generated identity context.
 
+Identity and introspection read the authoritative admin-permission set from
+`identity_db`; the Gateway then propagates sanitized trusted
+`X-Account-Permissions` headers. Owning Job/Employer services authorize
+moderation using that trusted permission context; they do not query
+`identity_db` directly or claim to re-check Identity DB permission state from
+outside Identity.
+
 Never trust client-supplied identity headers.
 
 `/identity/me` exposes the current authoritative permissions for frontend
@@ -363,9 +370,10 @@ POST-P0 Admin authorization model:
 - `ADMIN` also owns a `Set<AdminPermission>` stored in `identity_db`.
 - Permission values are authoritative DB state, not JWT claims.
 - Gateway propagates sanitized trusted headers including `X-Account-Permissions`.
+- Identity/introspection reads the authoritative permission set from `identity_db`.
 - Owning business services authorize moderation endpoints using the trusted
-  `X-Account-Id`, `X-Account-Role`, and `X-Account-Permissions` values along with
-  DB-backed permission verification when needed.
+  `X-Account-Id`, `X-Account-Role`, and `X-Account-Permissions` values; they do
+  not query `identity_db` directly for permission re-checks.
 - Business Admin endpoints are not all read-only; moderation endpoints for jobs
   and companies mutate domain state under ADMIN + specific permission checks.
 - Admin list APIs still use 0-based pagination with default `size=20` and max
@@ -474,7 +482,9 @@ Company moderation metadata includes `moderationReason`, `moderatedByAccountId`,
 and `moderatedAt`. Company verification metadata includes `verificationReason`,
 `verifiedByAccountId`, and `verifiedAt`.
 
-No hard delete of company records or moderation history is allowed.
+No hard delete of Company business records is implemented. Current moderation
+metadata is stored on the entity; there is no separate moderation audit-history
+model yet.
 
 ---
 
@@ -564,7 +574,8 @@ Locked weights:
 - Skills: `55%`;
 - Experience: `25%`;
 - Education: `10%`;
-- Title/domain: `10%`.
+- Title: `5%`;
+- Domain: `5%`.
 
 Candidate preference scoring is separate and not included.
 

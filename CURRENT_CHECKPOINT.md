@@ -18,7 +18,7 @@ Step 5/7 — D2 Notification Usability — PLANNED
 Step 6/7 — D3 Recruiter Applicant Filtering/Sorting — PLANNED
 Step 7/7 — Phase E Final Regression + Documentation — PLANNED
 
-Latest verified main SHA:
+Latest verified implementation merge (baseline):
 
 `adfe3ee031b6ac362d69230a2fdf16b7bd9ac801`
 
@@ -195,30 +195,29 @@ Admin Companies UI:
 Frontend capability checks are UX only.
 Backend authorization remains mandatory and authoritative.
 
-Latest verified merge:
-adfe3ee031b6ac362d69230a2fdf16b7bd9ac801
+Current docs merge:
+`72ed46573f1d177e8258801c58f18a917fb8bca3`
+
+Latest verified implementation merge (baseline):
+`adfe3ee031b6ac362d69230a2fdf16b7bd9ac801`
 
 ---
 
-# 1. Critical Rule for the Next Chat
+# 1. Current documentation and implementation state
 
-Before starting any Day 7 stabilization, demo, or report work:
+This checkpoint reflects the current post-P0 platform state, not a Day 6/Day 7 handoff.
 
-1. Read:
-    - `MASTER_PROMPT.md`
-    - `PROJECT_CONTEXT.md`
-    - `ARCHITECTURE.md`
-    - `DEVELOPMENT_GUIDE.md`
-    - `CURRENT_CHECKPOINT.md`
-2. Inspect the actual GitHub `main` branch.
-3. Do NOT assume repository state only from this checkpoint.
-4. Source code on `main` is implementation truth.
-5. If this checkpoint differs from actual source:
-    - use actual source to determine implementation state;
-    - explicitly report the inconsistency;
-    - do not silently rewrite frozen architecture/domain rules.
-6. Confirm the current Day 6-complete source state before starting Day 7 work.
-7. Do not claim compile/test/runtime/Postman success without actual evidence.
+Current step state:
+
+- Step 3/7 — POST-P0 Admin oversight + moderation — DONE
+- Step 4/7 — D1 Candidate Job Recommendations — NEXT
+- Step 5/7 — D2 Notification Usability — PLANNED
+- Step 6/7 — D3 Recruiter Applicant Filtering/Sorting — PLANNED
+- Step 7/7 — Phase E Final Regression + Documentation — PLANNED
+
+Source code on `main` remains the implementation truth. Documentation must reflect
+actual repository state and must not claim Day 6 completion or Day 7 stabilization
+as current work.
 
 Known Day 3 final implementation merge:
 
@@ -1125,11 +1124,8 @@ Merged branches are historical/read-only.
 
 Do not continue new work on merged Day 1-5 branches.
 
-Before every new Day 6 STEP:
-
-- checkout/pull latest `main`;
-- inspect actual source;
-- create a fresh short-lived branch.
+Repository work should begin from the current project state and validate against
+actual source before implementation changes are made.
 
 ---
 
@@ -1344,18 +1340,17 @@ Day 5 source-level scope is complete.
 
 ---
 
-# 23. Next Action — Day 7 Stabilization
+# 23. Current post-P0 roadmap
 
-Day 6 P0 implementation is complete. Day 7 is limited to stabilization, demo,
-and report support:
+Current roadmap status:
 
-1. run final regression and quality checks;
-2. fix confirmed bugs only, with no speculative refactors;
-3. prepare demo data and the demonstrated end-to-end flow where needed;
-4. update README or run instructions where the existing project requires it;
-5. support final documentation and report work;
-6. preserve the frozen architecture and domain rules;
-7. do not redesign the architecture or expand into unnecessary P1 features.
+- Step 3/7 — POST-P0 Admin oversight + moderation — DONE
+- Step 4/7 — D1 Candidate Job Recommendations — NEXT
+- Step 5/7 — D2 Notification Usability — PLANNED
+- Step 6/7 — D3 Recruiter Applicant Filtering/Sorting — PLANNED
+- Step 7/7 — Phase E Final Regression + Documentation — PLANNED
+
+Documentation must remain aligned to source code and to the current merge state.
 
 ---
 
@@ -1372,60 +1367,4 @@ Known intentionally deferred items include:
 - email notifications not implemented;
 - current Notification duplicate protection is P0 idempotency support, not a full exactly-once guarantee.
 
-Day 5 matching and AI are now complete at source level.
-
----
-
-# 25. Handoff Rule — Day 7
-
-Repository:
-
-`https://github.com/tranbaominh205/recruitment-platform`
-
-Verified final Day 6 merge:
-
-`6d71ceb19deaba9fd69ecdd2b121f934f0bceea2`
-
-Current phase:
-
-DAY 6 DONE / DAY 7 READY
-
-The following are already implemented and must not be reimplemented in the
-next chat:
-
-- React + Vite `web-app`;
-- authentication;
-- Candidate P0;
-- Recruiter P0;
-- exact selected `resumeId` application flow;
-- recruiter exact submitted Resume access;
-- deterministic Resume <-> Job matching;
-- AI explanation as decision support only;
-- application status transitions;
-- interview scheduling;
-- Candidate and Recruiter notifications.
-
-The next chat must still read all five mandatory project files, inspect actual
-GitHub `main`, treat source as implementation truth, report any
-documentation/source inconsistency, and not rely on previous chat memory.
-It must not claim test or runtime evidence without actual evidence.
-
-The frozen rules remain in force:
-
-- CandidateProfile != Resume;
-- an Application stores the exact selected `resumeId`;
-- recruiter matching is Resume <-> Job;
-- Candidate preferences do not enter recruiter matching;
-- deterministic matching weights remain 55/25/10/5/5;
-- AI cannot auto-hire or auto-reject;
-- AI cannot mutate Application status;
-- the Gateway authenticates;
-- the owning service authorizes;
-- no direct cross-service database access;
-- no Elasticsearch in P0.
-
-The next chat must not reimplement Day 6. Day 7 work is limited to confirmed
-bug fixes, final regression and stabilization, demo data and flow preparation,
-README or run-instruction updates where needed, final documentation/report
-support, and final quality checks. No architecture redesign or unnecessary
-feature expansion is permitted.
+Day 5 matching and AI are complete at source level for the current project baseline.
