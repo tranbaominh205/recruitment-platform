@@ -30,6 +30,7 @@ import com.tbm.recruitment.identity.repository.InvalidatedTokenRepository;
 import com.tbm.recruitment.identity.security.JwtService;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import javax.crypto.SecretKey;
@@ -97,9 +98,10 @@ class AccountServiceTest {
   }
 
   @Test
-  void meReturnsAuthoritativeDatabaseEmailAndRoleInsteadOfJwtClaims() {
+  void meReturnsAuthoritativeDatabaseEmailRoleAndPermissionsInsteadOfJwtClaims() {
     UUID accountId = UUID.randomUUID();
     Account account = buildAccount(accountId, "db-authoritative@example.com", Role.RECRUITER, 4L);
+    account.setAdminPermissions(java.util.EnumSet.of(AdminPermission.COMPANY_VERIFY));
     String token =
         issueToken(
             "authoritative-me-jti",
@@ -115,6 +117,58 @@ class AccountServiceTest {
     assertEquals(accountId.toString(), response.accountId());
     assertEquals("db-authoritative@example.com", response.email());
     assertEquals(Role.RECRUITER.name(), response.role());
+    assertEquals(List.of(), response.permissions());
+  }
+
+  @Test
+  void adminMeReturnsCurrentDatabasePermissionsInDeterministicSortedOrder() {
+    UUID accountId = UUID.randomUUID();
+    Account account =
+        buildAdminAccount(
+            accountId,
+            java.util.EnumSet.of(
+                AdminPermission.COMPANY_VERIFY,
+                AdminPermission.JOB_MODERATE,
+                AdminPermission.ACCOUNT_DISABLE,
+                AdminPermission.ACCOUNT_REVOKE_SESSIONS,
+                AdminPermission.COMPANY_MODERATE));
+    String token =
+        issueToken(
+            "admin-me-jti", accountId.toString(), "admin@example.com", Role.ADMIN.name(), 7L);
+
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+
+    MeResponse response = accountService.getCurrentAccount(decodeAccessToken(token));
+
+    assertEquals(Role.ADMIN.name(), response.role());
+    assertEquals(
+        List.of(
+            AdminPermission.ACCOUNT_DISABLE.name(),
+            AdminPermission.ACCOUNT_REVOKE_SESSIONS.name(),
+            AdminPermission.COMPANY_MODERATE.name(),
+            AdminPermission.COMPANY_VERIFY.name(),
+            AdminPermission.JOB_MODERATE.name()),
+        response.permissions());
+  }
+
+  @Test
+  void nonAdminMeReturnsEmptyPermissions() {
+    UUID candidateId = UUID.randomUUID();
+    Account account = buildAccount(candidateId, "candidate@example.com", Role.CANDIDATE, 3L);
+    String token =
+        issueToken(
+            "candidate-me-jti",
+            candidateId.toString(),
+            "jwt-email@example.com",
+            Role.CANDIDATE.name(),
+            3L);
+
+    when(accountRepository.findById(candidateId)).thenReturn(Optional.of(account));
+
+    MeResponse response = accountService.getCurrentAccount(decodeAccessToken(token));
+
+    assertEquals(List.of(), response.permissions());
+    assertEquals(Role.CANDIDATE.name(), response.role());
   }
 
   @Test

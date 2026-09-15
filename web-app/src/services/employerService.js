@@ -8,3 +8,9 @@ export function updateCompany(payload) { return apiClient.put('/employer/company
 export function getAdminEmployerStatistics() { return apiClient.get('/employer/admin/statistics').then(getResult) }
 export function getAdminCompanies(params) { return apiClient.get('/employer/admin/companies', { params }).then(getResult) }
 export function getAdminCompany(companyId) { return apiClient.get(`/employer/admin/companies/${companyId}`).then(getResult) }
+export function updateAdminCompanyModeration(companyId, payload) {
+  return apiClient.patch(`/employer/admin/companies/${companyId}/moderation`, payload).then(getResult)
+}
+export function updateAdminCompanyVerification(companyId, payload) {
+  return apiClient.patch(`/employer/admin/companies/${companyId}/verification`, payload).then(getResult)
+}

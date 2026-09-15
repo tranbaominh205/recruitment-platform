@@ -12,7 +12,7 @@ const defaultPage = {
 }
 
 function AdminJobsPage() {
-  const [filters, setFilters] = useState({ keyword: '', status: '' })
+  const [filters, setFilters] = useState({ keyword: '', status: '', moderationStatus: '' })
   const [resultPage, setResultPage] = useState(defaultPage)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -32,6 +32,10 @@ function AdminJobsPage() {
 
       if (nextFilters.status) {
         params.status = nextFilters.status
+      }
+
+      if (nextFilters.moderationStatus) {
+        params.moderationStatus = nextFilters.moderationStatus
       }
 
       const response = await getAdminJobs(params)
@@ -80,12 +84,21 @@ function AdminJobsPage() {
           />
         </label>
         <label>
-          Status
+          Business status
           <select name="status" value={filters.status} onChange={updateFilter}>
             <option value="">All statuses</option>
             <option value="DRAFT">DRAFT</option>
             <option value="PUBLISHED">PUBLISHED</option>
             <option value="CLOSED">CLOSED</option>
+          </select>
+        </label>
+        <label>
+          Moderation status
+          <select name="moderationStatus" value={filters.moderationStatus} onChange={updateFilter}>
+            <option value="">All moderation</option>
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="HIDDEN">HIDDEN</option>
+            <option value="REMOVED">REMOVED</option>
           </select>
         </label>
         <button type="submit">Search jobs</button>
@@ -103,6 +116,7 @@ function AdminJobsPage() {
                 <p className="eyebrow">{job.status}</p>
                 <h2>{job.title}</h2>
                 <p>{job.domain || 'Domain not set'} · {job.location || 'Location not set'}</p>
+                <p>Moderation: {job.moderationStatus || 'ACTIVE'}</p>
                 <p>{job.id}</p>
               </div>
               <Link className="button-link" to={`/admin/jobs/${job.id}`}>View detail</Link>
