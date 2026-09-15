@@ -22,6 +22,10 @@ function ProtectedRoute({ allowedRole }) {
       return <Navigate to="/recruiter" replace />
     }
 
+    if (account.role === 'ADMIN') {
+      return <Navigate to="/admin" replace />
+    }
+
     return <Navigate to="/" replace />
   }
 

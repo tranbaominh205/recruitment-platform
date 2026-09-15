@@ -27,6 +27,8 @@ function LoginPage() {
         navigate('/candidate', { replace: true })
       } else if (account.role === 'RECRUITER') {
         navigate('/recruiter', { replace: true })
+      } else if (account.role === 'ADMIN') {
+        navigate('/admin', { replace: true })
       } else {
         navigate('/', { replace: true })
       }

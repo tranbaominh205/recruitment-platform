@@ -23,3 +23,7 @@ export function downloadMyResume(resumeId) {
     fileName: response.headers['content-disposition'] || 'resume.pdf',
   }))
 }
+
+export function getAdminResumeStatistics() {
+  return apiClient.get('/resume/admin/statistics').then(getResult)
+}

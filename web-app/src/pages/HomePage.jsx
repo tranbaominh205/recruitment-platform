@@ -21,6 +21,10 @@ function HomeContent() {
     return <p><Link to="/recruiter">Open your workspace</Link> or <button type="button" onClick={logout}>log out</button>.</p>
   }
 
+  if (account?.role === 'ADMIN') {
+    return <p><Link to="/admin">Open your workspace</Link> or <button type="button" onClick={logout}>log out</button>.</p>
+  }
+
   if (account) {
     return (
       <>
