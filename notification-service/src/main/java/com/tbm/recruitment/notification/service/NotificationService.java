@@ -23,6 +23,7 @@ public class NotificationService {
 
   NotificationRepository notificationRepository;
   NotificationMapper notificationMapper;
+  NotificationSseService notificationSseService;
 
   public List<NotificationResponse> getMyNotifications(String accountIdHeader, String accountRole) {
 
@@ -93,8 +94,15 @@ public class NotificationService {
             .build();
 
     Notification savedNotification = notificationRepository.save(notification);
+    NotificationResponse response = notificationMapper.toNotificationResponse(savedNotification);
 
-    return notificationMapper.toNotificationResponse(savedNotification);
+    notificationSseService.publishNotificationCreated(
+        savedNotification.getRecipientAccountId(),
+        savedNotification.getId(),
+        savedNotification.getType(),
+        savedNotification.getReferenceId());
+
+    return response;
   }
 
   private NotificationResponse updateNotificationReadState(

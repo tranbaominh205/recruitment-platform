@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../configurations/useAuth'
+import { subscribeToNotificationCreated } from '../services/accountSseService'
 import { getApiErrorMessage } from '../services/apiError'
 import {
   getMyNotifications,
@@ -25,24 +26,53 @@ function NotificationsPage() {
   const [busyNotificationId, setBusyNotificationId] = useState(null)
   const [isMarkingAll, setIsMarkingAll] = useState(false)
 
+  const loadNotifications = useCallback(async () => {
+    const [loadedNotifications, unreadSummary] = await Promise.all([
+      getMyNotifications(),
+      getUnreadNotificationCount(),
+    ])
+    setNotifications(loadedNotifications)
+    setUnreadCount(unreadSummary?.unreadCount ?? 0)
+    setError('')
+  }, [])
+
   useEffect(() => {
-    async function loadNotifications() {
+    let active = true
+
+    async function loadInitialNotifications() {
       try {
-        const [loadedNotifications, unreadSummary] = await Promise.all([
-          getMyNotifications(),
-          getUnreadNotificationCount(),
-        ])
-        setNotifications(loadedNotifications)
-        setUnreadCount(unreadSummary?.unreadCount ?? 0)
+        await loadNotifications()
       } catch (requestError) {
-        setError(getApiErrorMessage(requestError, 'Unable to load your notifications.'))
+        if (active) {
+          setError(getApiErrorMessage(requestError, 'Unable to load your notifications.'))
+        }
       } finally {
-        setIsLoading(false)
+        if (active) {
+          setIsLoading(false)
+        }
       }
     }
 
-    loadNotifications()
-  }, [])
+    const unsubscribe = subscribeToNotificationCreated(async () => {
+      if (!active) {
+        return
+      }
+      try {
+        await loadNotifications()
+      } catch (requestError) {
+        if (active) {
+          setError(getApiErrorMessage(requestError, 'Unable to refresh your notifications.'))
+        }
+      }
+    })
+
+    loadInitialNotifications()
+
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [loadNotifications])
 
   async function refreshUnreadCount() {
     const unreadSummary = await getUnreadNotificationCount()
