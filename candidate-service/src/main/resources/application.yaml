@@ -18,3 +18,7 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
+
+services:
+  job:
+    base-url: ${JOB_SERVICE_URL:http://localhost:8084}
