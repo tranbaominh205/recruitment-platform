@@ -347,6 +347,7 @@ class CompanyServiceAdminTest {
 
     assertEquals(createdCompany.getId(), created.id());
     assertEquals(existingCompany.getId(), found.id());
+    assertEquals(CompanyModerationStatus.SUSPENDED, found.moderationStatus());
     assertEquals("TBM Tech 2", updated.name());
     assertEquals(CompanyVerificationStatus.REJECTED, existingCompany.getVerificationStatus());
   }
@@ -407,6 +408,9 @@ class CompanyServiceAdminTest {
         company.getWebsite(),
         company.getIndustry(),
         company.getLocation(),
+        company.getModerationStatus() == null
+            ? CompanyModerationStatus.ACTIVE
+            : company.getModerationStatus(),
         company.getCreatedAt(),
         company.getUpdatedAt());
   }

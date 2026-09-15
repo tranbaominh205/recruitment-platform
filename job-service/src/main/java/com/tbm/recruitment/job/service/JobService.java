@@ -5,6 +5,7 @@ import com.tbm.recruitment.job.dto.request.CreateJobRequest;
 import com.tbm.recruitment.job.dto.request.UpdateJobModerationRequest;
 import com.tbm.recruitment.job.dto.request.UpdateJobRequest;
 import com.tbm.recruitment.job.dto.response.AdminJobStatisticsResponse;
+import com.tbm.recruitment.job.dto.response.CompanyModerationStatus;
 import com.tbm.recruitment.job.dto.response.CompanySummaryResponse;
 import com.tbm.recruitment.job.dto.response.JobResponse;
 import com.tbm.recruitment.job.dto.response.PageResponse;
@@ -48,7 +49,8 @@ public class JobService {
 
     validateSalaryRange(request.salaryMin(), request.salaryMax());
 
-    CompanySummaryResponse company = employerClient.getMyCompany(accountIdHeader, accountRole);
+    CompanySummaryResponse company = getMyCompany(accountIdHeader, accountRole);
+    requireActiveCompanyForMutation(company);
 
     Job job = jobMapper.toJob(request);
 
@@ -70,7 +72,9 @@ public class JobService {
 
     validateSalaryRange(request.salaryMin(), request.salaryMax());
 
-    Job job = getOwnedJob(jobId, accountIdHeader, accountRole);
+    CompanySummaryResponse company = getMyCompany(accountIdHeader, accountRole);
+    requireActiveCompanyForMutation(company);
+    Job job = getOwnedJob(jobId, company.id());
 
     if (job.getStatus() != JobStatus.DRAFT) {
       throw new AppException(ErrorCode.INVALID_JOB_STATUS);
@@ -88,7 +92,9 @@ public class JobService {
 
     requireRecruiterAccount(accountIdHeader, accountRole);
 
-    Job job = getOwnedJob(jobId, accountIdHeader, accountRole);
+    CompanySummaryResponse company = getMyCompany(accountIdHeader, accountRole);
+    requireActiveCompanyForMutation(company);
+    Job job = getOwnedJob(jobId, company.id());
 
     if (job.getStatus() != JobStatus.DRAFT) {
       throw new AppException(ErrorCode.INVALID_JOB_STATUS);
@@ -106,7 +112,8 @@ public class JobService {
 
     requireRecruiterAccount(accountIdHeader, accountRole);
 
-    Job job = getOwnedJob(jobId, accountIdHeader, accountRole);
+    CompanySummaryResponse company = getMyCompany(accountIdHeader, accountRole);
+    Job job = getOwnedJob(jobId, company.id());
 
     if (job.getStatus() != JobStatus.PUBLISHED) {
       throw new AppException(ErrorCode.INVALID_JOB_STATUS);
@@ -136,7 +143,8 @@ public class JobService {
 
     requireRecruiterAccount(accountIdHeader, accountRole);
 
-    Job job = getOwnedJob(jobId, accountIdHeader, accountRole);
+    CompanySummaryResponse company = getMyCompany(accountIdHeader, accountRole);
+    Job job = getOwnedJob(jobId, company.id());
 
     return jobMapper.toJobResponse(job);
   }
@@ -148,7 +156,7 @@ public class JobService {
     requireRecruiterAccount(accountIdHeader, accountRole);
     validatePagination(page, size);
 
-    CompanySummaryResponse company = employerClient.getMyCompany(accountIdHeader, accountRole);
+    CompanySummaryResponse company = getMyCompany(accountIdHeader, accountRole);
 
     PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
@@ -340,13 +348,20 @@ public class JobService {
     return jobMapper.toJobResponse(savedJob);
   }
 
-  private Job getOwnedJob(UUID jobId, String accountIdHeader, String accountRole) {
-
-    CompanySummaryResponse company = employerClient.getMyCompany(accountIdHeader, accountRole);
-
+  private Job getOwnedJob(UUID jobId, UUID companyId) {
     return jobRepository
-        .findByIdAndCompanyId(jobId, company.id())
+        .findByIdAndCompanyId(jobId, companyId)
         .orElseThrow(() -> new AppException(ErrorCode.JOB_NOT_FOUND));
+  }
+
+  private CompanySummaryResponse getMyCompany(String accountIdHeader, String accountRole) {
+    return employerClient.getMyCompany(accountIdHeader, accountRole);
+  }
+
+  private void requireActiveCompanyForMutation(CompanySummaryResponse company) {
+    if (company.moderationStatus() != CompanyModerationStatus.ACTIVE) {
+      throw new AppException(ErrorCode.COMPANY_SUSPENDED);
+    }
   }
 
   private UUID requireRecruiterAccount(String accountIdHeader, String accountRole) {

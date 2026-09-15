@@ -27,6 +27,8 @@ public enum ErrorCode {
 
   INVALID_JOB_STATUS(4008, "Invalid job status transition", HttpStatus.CONFLICT),
 
+  COMPANY_SUSPENDED(4009, "Company is suspended", HttpStatus.CONFLICT),
+
   INTERNAL_SERVER_ERROR(4999, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR);
 
   private final int code;
