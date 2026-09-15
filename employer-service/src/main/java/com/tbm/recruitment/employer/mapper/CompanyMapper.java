@@ -20,6 +20,7 @@ public interface CompanyMapper {
   @Mapping(target = "updatedAt", ignore = true)
   Company toCompany(CreateCompanyRequest request);
 
+  @Mapping(target = "moderationStatus", expression = "java(effectiveModerationStatus(company))")
   CompanyResponse toCompanyResponse(Company company);
 
   @Mapping(target = "moderationStatus", expression = "java(effectiveModerationStatus(company))")

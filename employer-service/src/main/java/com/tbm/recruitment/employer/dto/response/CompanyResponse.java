@@ -1,5 +1,6 @@
 package com.tbm.recruitment.employer.dto.response;
 
+import com.tbm.recruitment.employer.entity.CompanyModerationStatus;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -10,5 +11,6 @@ public record CompanyResponse(
     String website,
     String industry,
     String location,
+    CompanyModerationStatus moderationStatus,
     Instant createdAt,
     Instant updatedAt) {}
