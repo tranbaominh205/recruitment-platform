@@ -1,6 +1,7 @@
 package com.tbm.recruitment.job.dto.response;
 
 import com.tbm.recruitment.job.entity.EducationLevel;
+import com.tbm.recruitment.job.entity.JobModerationStatus;
 import com.tbm.recruitment.job.entity.JobStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -23,5 +24,8 @@ public record JobResponse(
     BigDecimal salaryMin,
     BigDecimal salaryMax,
     JobStatus status,
+    JobModerationStatus moderationStatus,
+    String moderationReason,
+    Instant moderatedAt,
     Instant createdAt,
     Instant updatedAt) {}
