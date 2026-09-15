@@ -19,6 +19,10 @@ import AdminInterviewDetailPage from '../pages/AdminInterviewDetailPage'
 import AdminInterviewsPage from '../pages/AdminInterviewsPage'
 import AdminJobDetailPage from '../pages/AdminJobDetailPage'
 import AdminJobsPage from '../pages/AdminJobsPage'
+import AdminMatchingDetailPage from '../pages/AdminMatchingDetailPage'
+import AdminMatchingPage from '../pages/AdminMatchingPage'
+import AdminNotificationDetailPage from '../pages/AdminNotificationDetailPage'
+import AdminNotificationsPage from '../pages/AdminNotificationsPage'
 import AdminResumeDetailPage from '../pages/AdminResumeDetailPage'
 import AdminResumesPage from '../pages/AdminResumesPage'
 import NotificationsPage from '../pages/NotificationsPage'
@@ -84,6 +88,10 @@ function AppRoutes() {
               <Route path="interviews/:interviewId" element={<AdminInterviewDetailPage />} />
               <Route path="resumes" element={<AdminResumesPage />} />
               <Route path="resumes/:resumeId" element={<AdminResumeDetailPage />} />
+              <Route path="matching" element={<AdminMatchingPage />} />
+              <Route path="matching/:applicationId" element={<AdminMatchingDetailPage />} />
+              <Route path="notifications" element={<AdminNotificationsPage />} />
+              <Route path="notifications/:notificationId" element={<AdminNotificationDetailPage />} />
             </Route>
           </Route>
         </Routes>
