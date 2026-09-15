@@ -1,5 +1,9 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '../configurations/AuthContext'
+import AdminAccountDetailPage from '../pages/AdminAccountDetailPage'
+import AdminAccountsPage from '../pages/AdminAccountsPage'
+import AdminCompaniesPage from '../pages/AdminCompaniesPage'
+import AdminCompanyDetailPage from '../pages/AdminCompanyDetailPage'
 import AdminLayout from '../components/AdminLayout'
 import CandidateApplicationDetailPage from '../pages/CandidateApplicationDetailPage'
 import CandidateApplicationsPage from '../pages/CandidateApplicationsPage'
@@ -9,6 +13,8 @@ import CandidateJobsPage from '../pages/CandidateJobsPage'
 import CandidateProfilePage from '../pages/CandidateProfilePage'
 import CandidateResumesPage from '../pages/CandidateResumesPage'
 import AdminDashboardPage from '../pages/AdminDashboardPage'
+import AdminJobDetailPage from '../pages/AdminJobDetailPage'
+import AdminJobsPage from '../pages/AdminJobsPage'
 import NotificationsPage from '../pages/NotificationsPage'
 import CandidateLayout from '../components/CandidateLayout'
 import RecruiterLayout from '../components/RecruiterLayout'
@@ -60,6 +66,12 @@ function AppRoutes() {
           <Route element={<ProtectedRoute allowedRole="ADMIN" />}>
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboardPage />} />
+              <Route path="accounts" element={<AdminAccountsPage />} />
+              <Route path="accounts/:accountId" element={<AdminAccountDetailPage />} />
+              <Route path="companies" element={<AdminCompaniesPage />} />
+              <Route path="companies/:companyId" element={<AdminCompanyDetailPage />} />
+              <Route path="jobs" element={<AdminJobsPage />} />
+              <Route path="jobs/:jobId" element={<AdminJobDetailPage />} />
             </Route>
           </Route>
         </Routes>

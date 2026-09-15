@@ -17,3 +17,5 @@ export function updateJob(jobId, payload) { return apiClient.put(`/job/${jobId}`
 export function publishJob(jobId) { return apiClient.post(`/job/${jobId}/publish`).then(getResult) }
 export function closeJob(jobId) { return apiClient.post(`/job/${jobId}/close`).then(getResult) }
 export function getAdminJobStatistics() { return apiClient.get('/job/admin/statistics').then(getResult) }
+export function getAdminJobs(params) { return apiClient.get('/job/admin/jobs', { params }).then(getResult) }
+export function getAdminJob(jobId) { return apiClient.get(`/job/admin/jobs/${jobId}`).then(getResult) }
