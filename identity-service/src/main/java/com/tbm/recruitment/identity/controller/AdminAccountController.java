@@ -17,6 +17,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -62,6 +63,16 @@ public class AdminAccountController {
         .code(ErrorCode.SUCCESS.getCode())
         .message(ErrorCode.SUCCESS.getMessage())
         .result(accountService.updateAccountEnabled(accountId, request.enabled(), jwt))
+        .build();
+  }
+
+  @PostMapping("/accounts/{accountId}/revoke-sessions")
+  public ApiResponse<AccountResponse> revokeSessions(
+      @PathVariable UUID accountId, @AuthenticationPrincipal Jwt jwt) {
+    return ApiResponse.<AccountResponse>builder()
+        .code(ErrorCode.SUCCESS.getCode())
+        .message(ErrorCode.SUCCESS.getMessage())
+        .result(accountService.revokeSessions(accountId, jwt))
         .build();
   }
 

@@ -23,6 +23,7 @@ import com.tbm.recruitment.identity.dto.request.RefreshRequest;
 import com.tbm.recruitment.identity.dto.response.IntrospectResponse;
 import com.tbm.recruitment.identity.dto.response.LoginResponse;
 import com.tbm.recruitment.identity.entity.Account;
+import com.tbm.recruitment.identity.entity.AdminPermission;
 import com.tbm.recruitment.identity.entity.InvalidatedToken;
 import com.tbm.recruitment.identity.entity.Role;
 import com.tbm.recruitment.identity.exception.AppException;
@@ -134,6 +135,49 @@ class AuthenticationServiceTest {
     assertEquals(account.getId().toString(), response.accountId());
     assertEquals(account.getEmail(), response.email());
     assertEquals(account.getRole().name(), response.role());
+  }
+
+  @Test
+  void introspectReturnsAdminPermissionsFromDatabaseStateAndEmptyForCandidate() {
+    UUID candidateId = UUID.randomUUID();
+    Account candidate =
+        buildAccount(candidateId, "candidate@example.com", Role.CANDIDATE, true, 0L);
+    String candidateToken =
+        issueToken(
+            "candidate-introspect-jti",
+            candidateId.toString(),
+            Instant.now().minusSeconds(60),
+            Instant.now().plusSeconds(300),
+            "identity-service");
+    when(invalidatedTokenRepository.existsById("candidate-introspect-jti")).thenReturn(false);
+    when(accountRepository.findById(candidateId)).thenReturn(Optional.of(candidate));
+
+    IntrospectResponse candidateResponse =
+        authenticationService.introspect(new IntrospectRequest(candidateToken));
+    assertTrue(candidateResponse.valid());
+    assertEquals(java.util.List.of(), candidateResponse.permissions());
+
+    UUID adminId = UUID.randomUUID();
+    Account admin = buildAccount(adminId, "admin@example.com", Role.ADMIN, true, 0L);
+    admin.setAdminPermissions(
+        java.util.EnumSet.of(
+            AdminPermission.ACCOUNT_DISABLE, AdminPermission.ACCOUNT_REVOKE_SESSIONS));
+    String adminToken =
+        issueToken(
+            "admin-introspect-jti",
+            adminId.toString(),
+            Instant.now().minusSeconds(60),
+            Instant.now().plusSeconds(300),
+            "identity-service");
+    when(invalidatedTokenRepository.existsById("admin-introspect-jti")).thenReturn(false);
+    when(accountRepository.findById(adminId)).thenReturn(Optional.of(admin));
+
+    IntrospectResponse adminResponse =
+        authenticationService.introspect(new IntrospectRequest(adminToken));
+    assertTrue(adminResponse.valid());
+    assertEquals(
+        java.util.List.of("ACCOUNT_DISABLE", "ACCOUNT_REVOKE_SESSIONS"),
+        adminResponse.permissions());
   }
 
   @Test
@@ -641,15 +685,20 @@ class AuthenticationServiceTest {
 
   private Account buildAccount(
       UUID accountId, String email, Role role, boolean enabled, long tokenVersion) {
-    return Account.builder()
-        .id(accountId)
-        .email(email)
-        .passwordHash(passwordEncoder.encode("secret123"))
-        .role(role)
-        .enabled(enabled)
-        .tokenVersion(tokenVersion)
-        .createdAt(Instant.now())
-        .build();
+    Account account =
+        Account.builder()
+            .id(accountId)
+            .email(email)
+            .passwordHash(passwordEncoder.encode("secret123"))
+            .role(role)
+            .enabled(enabled)
+            .tokenVersion(tokenVersion)
+            .createdAt(Instant.now())
+            .build();
+    if (role == Role.ADMIN) {
+      account.setAdminPermissions(java.util.EnumSet.allOf(AdminPermission.class));
+    }
+    return account;
   }
 
   private String issueToken(

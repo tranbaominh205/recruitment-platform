@@ -47,7 +47,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     ServerHttpRequest request = exchange.getRequest();
 
     if (isPublicEndpoint(request)) {
-      return chain.filter(exchange);
+      return chain.filter(sanitizeIdentityHeaders(exchange));
     }
 
     String token = extractBearerToken(request);
@@ -57,7 +57,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     }
 
     if (shouldBypassIntrospection(request)) {
-      return chain.filter(exchange);
+      return chain.filter(sanitizeIdentityHeaders(exchange));
     }
 
     return identityClient
@@ -75,11 +75,19 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
                       .mutate()
                       .headers(
                           headers -> {
+                            headers.remove("X-Account-Id");
+                            headers.remove("X-Account-Email");
+                            headers.remove("X-Account-Role");
+                            headers.remove("X-Account-Permissions");
+
                             headers.set("X-Account-Id", result.accountId());
-
                             headers.set("X-Account-Email", result.email());
-
                             headers.set("X-Account-Role", result.role());
+                            headers.set(
+                                "X-Account-Permissions",
+                                result.permissions() == null
+                                    ? ""
+                                    : String.join(",", result.permissions()));
                           })
                       .build();
 
@@ -95,6 +103,23 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
               return writeError(
                   exchange.getResponse(), GatewayErrorCode.IDENTITY_SERVICE_UNAVAILABLE);
             });
+  }
+
+  private ServerWebExchange sanitizeIdentityHeaders(ServerWebExchange exchange) {
+    ServerHttpRequest sanitizedRequest =
+        exchange
+            .getRequest()
+            .mutate()
+            .headers(
+                headers -> {
+                  headers.remove("X-Account-Id");
+                  headers.remove("X-Account-Email");
+                  headers.remove("X-Account-Role");
+                  headers.remove("X-Account-Permissions");
+                })
+            .build();
+
+    return exchange.mutate().request(sanitizedRequest).build();
   }
 
   private boolean isPublicEndpoint(ServerHttpRequest request) {

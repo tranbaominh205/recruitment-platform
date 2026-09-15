@@ -1,8 +1,11 @@
 package com.tbm.recruitment.identity.service;
 
 import com.tbm.recruitment.identity.entity.Account;
+import com.tbm.recruitment.identity.entity.AdminPermission;
 import com.tbm.recruitment.identity.entity.Role;
 import com.tbm.recruitment.identity.repository.AccountRepository;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +44,10 @@ public class AdminBootstrapService implements ApplicationRunner {
 
     Optional<Account> existingAccount = accountRepository.findByEmailIgnoreCase(normalizedEmail);
     if (existingAccount.isPresent()) {
-      if (existingAccount.get().getRole() == Role.ADMIN) {
+      Account account = existingAccount.get();
+      if (account.getRole() == Role.ADMIN) {
+        account.setAdminPermissions(new HashSet<>(EnumSet.allOf(AdminPermission.class)));
+        accountRepository.save(account);
         return;
       }
       throw new IllegalStateException(
@@ -53,6 +59,7 @@ public class AdminBootstrapService implements ApplicationRunner {
             .email(normalizedEmail)
             .passwordHash(passwordEncoder.encode(adminBootstrapPassword))
             .role(Role.ADMIN)
+            .adminPermissions(new HashSet<>(EnumSet.allOf(AdminPermission.class)))
             .enabled(true)
             .tokenVersion(0L)
             .build();

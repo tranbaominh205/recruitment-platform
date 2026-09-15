@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.tbm.recruitment.identity.entity.Account;
+import com.tbm.recruitment.identity.entity.AdminPermission;
 import com.tbm.recruitment.identity.entity.Role;
 import com.tbm.recruitment.identity.repository.AccountRepository;
 import java.time.Instant;
@@ -76,12 +77,16 @@ class AdminBootstrapServiceTest {
                         && account.getRole() == Role.ADMIN
                         && account.isEnabled()
                         && account.getTokenVersion().equals(0L)
+                        && account
+                            .getAdminPermissions()
+                            .containsAll(java.util.EnumSet.allOf(AdminPermission.class))
                         && passwordEncoder.matches("admin-secret-123", account.getPasswordHash())));
   }
 
   @Test
-  void bootstrapEnabledIsIdempotentForExistingAdminAndDoesNotResetPasswordOrEnabled()
-      throws Exception {
+  void
+      bootstrapEnabledIsIdempotentForExistingAdminAndBackfillsAllPermissionsWithoutResettingCredentials()
+          throws Exception {
     ReflectionTestUtils.setField(adminBootstrapService, "adminBootstrapEnabled", true);
     ReflectionTestUtils.setField(adminBootstrapService, "adminBootstrapEmail", "admin@example.com");
     ReflectionTestUtils.setField(
@@ -93,6 +98,7 @@ class AdminBootstrapServiceTest {
             .email("admin@example.com")
             .passwordHash("existing-hash")
             .role(Role.ADMIN)
+            .adminPermissions(java.util.EnumSet.of(AdminPermission.ACCOUNT_DISABLE))
             .enabled(false)
             .tokenVersion(12L)
             .createdAt(Instant.now())
@@ -100,13 +106,18 @@ class AdminBootstrapServiceTest {
 
     when(accountRepository.findByEmailIgnoreCase("admin@example.com"))
         .thenReturn(Optional.of(existingAdmin));
+    when(accountRepository.save(any(Account.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
 
     adminBootstrapService.run(new DefaultApplicationArguments(new String[0]));
 
     assertEquals("existing-hash", existingAdmin.getPasswordHash());
     assertEquals(false, existingAdmin.isEnabled());
     assertEquals(12L, existingAdmin.getTokenVersion());
-    verify(accountRepository, never()).save(any(Account.class));
+    assertEquals(
+        java.util.EnumSet.allOf(AdminPermission.class),
+        java.util.EnumSet.copyOf(existingAdmin.getAdminPermissions()));
+    verify(accountRepository).save(existingAdmin);
   }
 
   @Test

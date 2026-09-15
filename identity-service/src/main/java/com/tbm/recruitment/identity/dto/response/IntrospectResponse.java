@@ -1,3 +1,6 @@
 package com.tbm.recruitment.identity.dto.response;
 
-public record IntrospectResponse(boolean valid, String accountId, String email, String role) {}
+import java.util.List;
+
+public record IntrospectResponse(
+    boolean valid, String accountId, String email, String role, List<String> permissions) {}
