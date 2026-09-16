@@ -12,6 +12,8 @@ import com.tbm.recruitment.job.dto.response.PageResponse;
 import com.tbm.recruitment.job.entity.Job;
 import com.tbm.recruitment.job.entity.JobModerationStatus;
 import com.tbm.recruitment.job.entity.JobStatus;
+import com.tbm.recruitment.job.enums.JobListChange;
+import com.tbm.recruitment.job.event.JobListChangedEvent;
 import com.tbm.recruitment.job.exception.AppException;
 import com.tbm.recruitment.job.exception.ErrorCode;
 import com.tbm.recruitment.job.mapper.JobMapper;
@@ -24,6 +26,7 @@ import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -40,6 +43,7 @@ public class JobService {
   JobRepository jobRepository;
   JobMapper jobMapper;
   EmployerClient employerClient;
+  ApplicationEventPublisher applicationEventPublisher;
 
   @Transactional
   public JobResponse createJob(
@@ -60,6 +64,7 @@ public class JobService {
     job.setModerationStatus(JobModerationStatus.ACTIVE);
 
     Job savedJob = jobRepository.save(job);
+    publishJobListChangedEvent(savedJob, JobListChange.CREATED, false);
 
     return jobMapper.toJobResponse(savedJob);
   }
@@ -83,6 +88,7 @@ public class JobService {
     jobMapper.updateJob(request, job);
 
     Job savedJob = jobRepository.save(job);
+    publishJobListChangedEvent(savedJob, JobListChange.UPDATED, false);
 
     return jobMapper.toJobResponse(savedJob);
   }
@@ -100,9 +106,13 @@ public class JobService {
       throw new AppException(ErrorCode.INVALID_JOB_STATUS);
     }
 
+    boolean wasPubliclyVisible = isPubliclyVisible(job);
     job.setStatus(JobStatus.PUBLISHED);
 
     Job savedJob = jobRepository.save(job);
+    boolean isPubliclyVisible = isPubliclyVisible(savedJob);
+    publishJobListChangedEvent(
+        savedJob, JobListChange.PUBLISHED, wasPubliclyVisible != isPubliclyVisible);
 
     return jobMapper.toJobResponse(savedJob);
   }
@@ -119,9 +129,13 @@ public class JobService {
       throw new AppException(ErrorCode.INVALID_JOB_STATUS);
     }
 
+    boolean wasPubliclyVisible = isPubliclyVisible(job);
     job.setStatus(JobStatus.CLOSED);
 
     Job savedJob = jobRepository.save(job);
+    boolean isPubliclyVisible = isPubliclyVisible(savedJob);
+    publishJobListChangedEvent(
+        savedJob, JobListChange.CLOSED, wasPubliclyVisible != isPubliclyVisible);
 
     return jobMapper.toJobResponse(savedJob);
   }
@@ -330,6 +344,7 @@ public class JobService {
     Job job =
         jobRepository.findById(jobId).orElseThrow(() -> new AppException(ErrorCode.JOB_NOT_FOUND));
 
+    boolean wasPubliclyVisible = isPubliclyVisible(job);
     JobModerationStatus nextModerationStatus = request.moderationStatus();
     if (nextModerationStatus == JobModerationStatus.ACTIVE) {
       job.setModerationStatus(JobModerationStatus.ACTIVE);
@@ -345,7 +360,18 @@ public class JobService {
     }
 
     Job savedJob = jobRepository.save(job);
+    boolean isPubliclyVisible = isPubliclyVisible(savedJob);
+    publishJobListChangedEvent(
+        savedJob, JobListChange.MODERATION_CHANGED, wasPubliclyVisible != isPubliclyVisible);
+
     return jobMapper.toJobResponse(savedJob);
+  }
+
+  private void publishJobListChangedEvent(
+      Job job, JobListChange change, boolean publicCatalogChanged) {
+    applicationEventPublisher.publishEvent(
+        new JobListChangedEvent(
+            job.getId(), job.getCreatedByAccountId(), change, publicCatalogChanged));
   }
 
   private Job getOwnedJob(UUID jobId, UUID companyId) {
