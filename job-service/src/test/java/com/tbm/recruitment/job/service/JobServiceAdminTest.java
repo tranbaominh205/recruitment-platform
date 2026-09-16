@@ -38,6 +38,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -48,12 +49,14 @@ class JobServiceAdminTest {
   @Mock private JobRepository jobRepository;
   @Mock private JobMapper jobMapper;
   @Mock private EmployerClient employerClient;
+  @Mock private ApplicationEventPublisher applicationEventPublisher;
 
   private JobService jobService;
 
   @BeforeEach
   void setUp() {
-    jobService = new JobService(jobRepository, jobMapper, employerClient);
+    jobService =
+        new JobService(jobRepository, jobMapper, employerClient, applicationEventPublisher);
     lenient()
         .when(jobMapper.toJobResponse(any(Job.class)))
         .thenAnswer(invocation -> mapResponse(invocation.getArgument(0)));

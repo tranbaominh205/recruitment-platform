@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getApiErrorMessage } from '../services/apiError'
 import { getMyJobRecommendations } from '../services/candidateService'
+import { createJobSseConnection } from '../services/jobSseService'
 
 const defaultPage = {
   content: [],
@@ -37,20 +38,33 @@ function formatScore(score) {
 function CandidateRecommendationsPage() {
   const [recommendations, setRecommendations] = useState([])
   const [page, setPage] = useState(0)
+  const [size] = useState(20)
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const pageRef = useRef(0)
 
-  async function loadRecommendations(nextPage = 0) {
+  useEffect(() => {
+    pageRef.current = page
+  }, [page])
+
+  async function loadRecommendations(requestedPage = 0) {
     setIsLoading(true)
     setError('')
 
     try {
-      const result = await getMyJobRecommendations({ page: nextPage, size: 20 })
-      const normalized = result || defaultPage
+      const firstResult = await getMyJobRecommendations({ page: requestedPage, size })
+      let normalized = firstResult || defaultPage
+
+      const maxPage = Math.max(0, (normalized.totalPages || 0) - 1)
+      if ((normalized.totalPages || 0) > 0 && requestedPage > maxPage) {
+        const clampedResult = await getMyJobRecommendations({ page: maxPage, size })
+        normalized = clampedResult || defaultPage
+      }
+
       setRecommendations(normalized.content || [])
-      setPage(normalized.page || 0)
+      setPage((normalized.totalPages || 0) === 0 ? 0 : (normalized.page || 0))
       setTotalPages(normalized.totalPages || 0)
       setTotalElements(normalized.totalElements || 0)
     } catch (requestError) {
@@ -66,6 +80,18 @@ function CandidateRecommendationsPage() {
 
   useEffect(() => {
     loadRecommendations(0)
+  }, [])
+
+  useEffect(() => {
+    const source = createJobSseConnection({
+      onPublicJobListChanged: () => {
+        loadRecommendations(pageRef.current)
+      },
+    })
+
+    return () => {
+      source?.close()
+    }
   }, [])
 
   return (

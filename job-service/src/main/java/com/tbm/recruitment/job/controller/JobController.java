@@ -7,14 +7,17 @@ import com.tbm.recruitment.job.dto.response.JobResponse;
 import com.tbm.recruitment.job.dto.response.PageResponse;
 import com.tbm.recruitment.job.exception.ErrorCode;
 import com.tbm.recruitment.job.service.JobService;
+import com.tbm.recruitment.job.service.JobSseService;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/job")
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 public class JobController {
 
   JobService jobService;
+  JobSseService jobSseService;
 
   @PostMapping
   public ResponseEntity<ApiResponse<JobResponse>> createJob(
@@ -149,5 +153,12 @@ public class JobController {
         .message(ErrorCode.SUCCESS.getMessage())
         .result(result)
         .build();
+  }
+
+  @GetMapping(value = "/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+  public SseEmitter streamJobEvents(
+      @RequestHeader(value = "X-Account-Id", required = false) String accountId,
+      @RequestHeader(value = "X-Account-Role", required = false) String accountRole) {
+    return jobSseService.subscribe(accountId, accountRole);
   }
 }
