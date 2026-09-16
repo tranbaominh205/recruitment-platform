@@ -153,6 +153,73 @@ Use Apache Kafka.
 
 Do NOT introduce RabbitMQ.
 
+## Browser realtime
+
+Use Server-Sent Events (SSE) for server -> browser change notifications only.
+
+Boundary:
+
+- REST remains authoritative for business mutations and reads.
+- Kafka remains for backend service-to-service asynchronous integration events.
+- SSE is only the browser notification channel.
+
+Core implemented pattern:
+
+business mutation
+-> authoritative DB state
+-> Kafka when business integration requires it
+-> lightweight SSE change notification
+-> frontend receives event
+-> frontend refetches existing REST endpoint
+-> REST response becomes UI state
+
+SSE does NOT replace REST.
+
+SSE does NOT replace Kafka.
+
+No Kafka topic is created solely for UI realtime.
+
+SSE payload is not authoritative domain state; frontend refetches authoritative REST data.
+
+Authentication flow for SSE requests:
+
+React
+-> API Gateway
+-> Identity introspection
+-> trusted X-Account-* headers
+-> owning SSE service
+
+Bearer tokens must not be placed in SSE query strings.
+
+Frontend uses the `eventsource` package with custom `fetch`/header support to
+send `Authorization: Bearer ...` on SSE requests (native browser EventSource
+cannot set this header).
+
+Current SSE streams:
+
+- Notification Service: `GET /api/v1/notification/events` (roles: `CANDIDATE`, `RECRUITER`)
+- Recruitment Service: `GET /api/v1/recruitment/application/job/{jobId}/events` (role: owning `RECRUITER` only)
+- Job Service: `GET /api/v1/job/events` (roles: `CANDIDATE`, `RECRUITER`)
+
+`ADMIN` is not an SSE consumer for these streams.
+
+SSE emitter registries are currently in-memory (`ConcurrentHashMap` + `SseEmitter`)
+as the single-instance project choice; multi-instance SSE fan-out is out of scope.
+
+Job realtime visibility rule for candidate public feeds is exactly:
+
+`status == PUBLISHED` AND (`moderationStatus == ACTIVE` OR `moderationStatus == null`)
+
+Behavioral examples:
+
+- create DRAFT: recruiter owner realtime yes, candidate public realtime no
+- update DRAFT: recruiter owner realtime yes, candidate public realtime no
+- publish ACTIVE: recruiter owner realtime yes, candidate public realtime yes
+- close PUBLISHED: recruiter owner realtime yes, candidate public realtime yes
+- PUBLISHED ACTIVE -> HIDDEN: candidate public realtime yes
+- PUBLISHED HIDDEN -> ACTIVE: candidate public realtime yes
+- PUBLISHED HIDDEN -> REMOVED: candidate public realtime no
+
 ---
 
 # 8. Important Kafka Events

@@ -10,17 +10,33 @@ Recruitment Platform Capstone
 
 Current phase:
 
-POST-P0 PLATFORM ADMINISTRATION COMPLETE
+PHASE E3 — DOCUMENTATION/SOURCE CONSISTENCY (CURRENT)
 
 Step 3/7 — POST-P0 Admin oversight + moderation — DONE
-Step 4/7 — D1 Candidate Job Recommendations — NEXT
-Step 5/7 — D2 Notification Usability — PLANNED
-Step 6/7 — D3 Recruiter Applicant Filtering/Sorting — PLANNED
-Step 7/7 — Phase E Final Regression + Documentation — PLANNED
+Step 4/7 — D1 Candidate Job Recommendations — DONE
+Step 5/7 — D2 Notification Usability — DONE
+Step 6/7 — D3 Recruiter Applicant Filtering/Sorting — DONE
+Step 7/7 — Phase E Final Regression + Documentation — CURRENT
 
 Latest verified implementation merge (baseline):
 
-`adfe3ee031b6ac362d69230a2fdf16b7bd9ac801`
+`583afacc7615a29211bf4c0fadaff04171362cde`
+
+Phase E checkpoint status:
+
+- E1 Backend Regression — DONE
+  - `mvn clean test` = BUILD SUCCESS
+  - previous `CompanyMapperTest` issue did not reproduce
+  - no manual MapStruct workaround required
+- E2 Frontend Regression — DONE
+  - `npm ci` success
+  - `npm run lint` success
+  - 0 lint errors
+  - 23 non-blocking warnings
+  - production build success
+  - runtime P0/P1/realtime regression passed
+- E3 Documentation synchronization — CURRENT
+- E4 Final verification — NEXT
 
 Completed before this checkpoint:
 
@@ -199,7 +215,7 @@ Current docs merge:
 `72ed46573f1d177e8258801c58f18a917fb8bca3`
 
 Latest verified implementation merge (baseline):
-`adfe3ee031b6ac362d69230a2fdf16b7bd9ac801`
+`583afacc7615a29211bf4c0fadaff04171362cde`
 
 ---
 
@@ -210,10 +226,27 @@ This checkpoint reflects the current post-P0 platform state, not a Day 6/Day 7 h
 Current step state:
 
 - Step 3/7 — POST-P0 Admin oversight + moderation — DONE
-- Step 4/7 — D1 Candidate Job Recommendations — NEXT
-- Step 5/7 — D2 Notification Usability — PLANNED
-- Step 6/7 — D3 Recruiter Applicant Filtering/Sorting — PLANNED
-- Step 7/7 — Phase E Final Regression + Documentation — PLANNED
+- Step 4/7 — D1 Candidate Job Recommendations — DONE
+- Step 5/7 — D2 Notification Usability — DONE
+- Step 6/7 — D3 Recruiter Applicant Filtering/Sorting — DONE
+- Step 7/7 — Phase E Final Regression + Documentation — CURRENT
+
+Realtime checkpoint:
+
+- R1 SSE Foundation — DONE
+- R2 Notification Realtime — DONE
+- R3 Recruiter Applicant Realtime — DONE
+- R4 Candidate Application Detail Realtime — DONE
+- R5 Realtime Regression — DONE
+- R6 Job Realtime — DONE
+- R6 implementation baseline merge: `583afacc7615a29211bf4c0fadaff04171362cde`
+
+Phase E status:
+
+- E1 Backend Regression — DONE
+- E2 Frontend Regression — DONE
+- E3 Documentation synchronization — CURRENT
+- E4 Final verification — NEXT
 
 Source code on `main` remains the implementation truth. Documentation must reflect
 actual repository state and must not claim Day 6 completion or Day 7 stabilization
@@ -1345,10 +1378,35 @@ Day 5 source-level scope is complete.
 Current roadmap status:
 
 - Step 3/7 — POST-P0 Admin oversight + moderation — DONE
-- Step 4/7 — D1 Candidate Job Recommendations — NEXT
-- Step 5/7 — D2 Notification Usability — PLANNED
-- Step 6/7 — D3 Recruiter Applicant Filtering/Sorting — PLANNED
-- Step 7/7 — Phase E Final Regression + Documentation — PLANNED
+- Step 4/7 — D1 Candidate Job Recommendations — DONE
+- Step 5/7 — D2 Notification Usability — DONE
+- Step 6/7 — D3 Recruiter Applicant Filtering/Sorting — DONE
+- Step 7/7 — Phase E Final Regression + Documentation — CURRENT
+
+Phase E:
+
+- E1 Backend Regression — DONE
+- E2 Frontend Regression — DONE
+- E3 Documentation synchronization — CURRENT
+- E4 Final verification — NEXT
+
+Current realtime coverage:
+
+1. Candidate/Recruiter notifications
+2. Notification unread count refresh
+3. Recruiter Job applications list
+4. Candidate Application detail status
+5. Candidate Application detail interview
+6. Recruiter My Jobs
+7. Candidate Find a Job
+8. Candidate Recommended Jobs
+
+Not currently in realtime scope:
+
+- Candidate My Applications list
+- Candidate Job detail
+- generic Recruiter Application detail cross-browser updates
+- Admin pages as SSE consumers
 
 Documentation must remain aligned to source code and to the current merge state.
 
@@ -1359,7 +1417,6 @@ Documentation must remain aligned to source code and to the current merge state.
 Known intentionally deferred items include:
 
 - Elasticsearch not implemented;
-- Candidate recommendation engine (preferences-based) not implemented;
 - interview reschedule/cancel not implemented;
 - multi-round interview workflow not implemented;
 - transactional outbox not implemented;
