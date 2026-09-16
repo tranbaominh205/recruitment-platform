@@ -664,3 +664,16 @@ Adapt the reference to the current stack:
 
 Do not introduce a different feature-based architecture such as src/features/**
 without an explicit architecture decision.
+
+---
+
+## 26. SSE Testing Guidance
+
+Use SSE only for server -> browser change notification and keep REST as the
+authoritative mutation/read channel.
+
+- Postman can inspect `text/event-stream` responses.
+- For frontend behavior, validate in browser DevTools Network + UI.
+- Send Bearer authorization in headers.
+- Do not place access tokens in SSE query strings.
+- After receiving SSE events, verify UI by refetching existing REST endpoints.

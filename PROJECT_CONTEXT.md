@@ -274,7 +274,13 @@ Recruiter-facing deterministic score weights:
 
 Candidate preferences are NOT included in recruiter matching score.
 
-Candidate preferences belong to a separate future RecommendationEngine/P1 concern.
+Candidate-facing recommendation is implemented as a separate flow from recruiter
+matching, using frozen deterministic preference weights:
+
+- desiredJobTitles: 40%
+- preferredLocations: 25%
+- employmentTypes: 20%
+- workplaceTypes: 15%
 
 ---
 
@@ -366,21 +372,52 @@ Examples:
 - advanced observability;
 - additional AI improvements.
 
-## Post-P0 roadmap — current remaining work
+## Post-P0 roadmap — current implementation state
 
-The platform is now past P0 and into the next operational stabilization wave:
+Completed:
 
-- Step 4/7 — D1 Candidate Job Recommendations
-  - candidate-facing job recommendations using CandidateProfile preferences;
-  - completely separate from recruiter Resume–Job matching.
-- Step 5/7 — D2 Notification Usability
-  - read/unread state and more useful navigation/reference behavior.
-- Step 6/7 — D3 Recruiter Applicant Filtering/Sorting
-  - recruiter-side filtering and sorting improvements without weakening
-    frozen application status rules.
-- Step 7/7 — Phase E Final Regression + Documentation
-  - backend/frontend regression, security negative cases, startup/runtime checks,
-    and final documentation freeze.
+- Step 4/7 — D1 Candidate Job Recommendations — DONE
+  - CandidateProfile preference-based recommendation;
+  - frozen weights: desiredJobTitles 40 / preferredLocations 25 /
+    employmentTypes 20 / workplaceTypes 15;
+  - explicitly separate from recruiter Resume <-> Job matching.
+- Step 5/7 — D2 Notification Usability — DONE
+  - unread count;
+  - mark read;
+  - mark unread;
+  - mark all read;
+  - notification -> Application navigation.
+- Step 6/7 — D3 Recruiter Applicant Filtering/Sorting — DONE
+  - status filter;
+  - submittedAt asc/desc;
+  - backend pagination;
+  - frontend pagination;
+  - SUBMITTED displayed as "New applicant";
+  - no persisted NEW status.
+
+Phase E status:
+
+- E1 backend regression — DONE
+- E2 frontend/runtime regression — DONE
+- E3 documentation/source synchronization — CURRENT
+- E4 final verification — NEXT
+
+## Current realtime (R1-R6) scope
+
+R1 SSE foundation, R2 notification realtime, R3 recruiter applicant realtime, R4
+candidate application detail realtime, R5 regression, and R6 job realtime are
+implemented.
+
+Current realtime coverage:
+
+1. Candidate/Recruiter notifications
+2. Notification unread count
+3. Recruiter Job applications list
+4. Candidate Application detail status
+5. Candidate Application detail interview
+6. Recruiter My Jobs
+7. Candidate Find a Job
+8. Candidate Recommended Jobs
 
 ---
 
